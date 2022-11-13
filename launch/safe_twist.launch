@@ -1,0 +1,11 @@
+<launch>
+
+    <node name="fred_move_base" 
+        pkg="fred_move_base" 
+        type="safe_twist.py"
+        output="screen"
+        >
+        
+    </node>
+          
+</launch>
