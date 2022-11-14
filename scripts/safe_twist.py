@@ -63,11 +63,7 @@ def joy_callback(msg):
     if(controler_buttons["x"]):
         abort_move()
     if(controler_buttons["triangule"]):
-<<<<<<< HEAD
-
-=======
         # print("led_on")
->>>>>>> b377328f63c7cdce2a23e53a0b9116e65a5409aa
         led_strip_pub.publish(1)
     if(controler_buttons["R1"]):
         led_strip_pub.publish(2)
