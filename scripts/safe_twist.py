@@ -16,7 +16,7 @@ led_strip_pub = rospy.Publisher("/cmd/led_strip/color", Float32, queue_size=10)
 distanceSensor = []
 safeValue = 200
 controler_buttons = {"square": None,
-                     "circle": None, "triangule": None, "x": None}
+                     "circle": None, "triangule": None, "x": None, "R2":None}
 abort = False
 
 
@@ -49,6 +49,7 @@ def joy_callback(msg):
     if(controler_buttons["x"]):
         abort_move()
     if(controler_buttons["triangule"]):
+
         led_strip_pub.publish(1)
 
 
