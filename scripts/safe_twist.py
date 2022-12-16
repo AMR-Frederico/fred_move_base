@@ -114,3 +114,4 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
 
         rospy.spin()
+print(start)
