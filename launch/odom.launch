@@ -3,7 +3,6 @@
     <node name="fred_odom" 
         pkg="fred_move_base" 
         type="ticks2odom.py"
-        output="screen"
         >
         
     </node>
