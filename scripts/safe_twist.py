@@ -17,12 +17,7 @@ led_strip_pub = rospy.Publisher("/cmd/led_strip/color", Float32, queue_size=10)
 
 distanceSensor = []
 safeValue = 200
-controler_buttons = {"square": None,
-                     "circle": None,
-                     "triangule": None,
-                     "x": None,
-                     "R2": None,
-                     "L2": None}
+
 abort = False
 pressed = True
 distance_detected = 1000
@@ -44,34 +39,7 @@ def callbackSensor(msg):
     # distanceSensor[0] = msg.range
 
 
-def joy_callback(msg):
 
-    global abort
-    global pressed
-
-    controler_buttons["circle"] = msg.buttons[2]
-    controler_buttons["square"] = msg.buttons[0]
-    controler_buttons["triangule"] = msg.buttons[3]
-    controler_buttons["x"] = msg.buttons[1]
-    controler_buttons["L2"] = msg.buttons[6]
-    controler_buttons["R2"] = msg.buttons[7]
-    controler_buttons["L1"] = msg.buttons[5]
-    controler_buttons["R1"] = msg.buttons[4]
-
-    if(controler_buttons["square"]):
-        ...
-    if(controler_buttons["x"]):
-        abort_move()
-    if(controler_buttons["triangule"]):
-        # print("led_on")
-        led_strip_pub.publish(1)
-    if(controler_buttons["R1"]):
-        led_strip_pub.publish(2)
-    if(controler_buttons["L1"]):
-        led_strip_pub.publish(0)
-    if(controler_buttons["L2"] and controler_buttons["R2"]):
-        print("CLEAR----------------")
-        abort = False
 
 
 def callbackCmdVel(msg):

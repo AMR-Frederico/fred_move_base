@@ -5,6 +5,8 @@ from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32, Int16, Bool
 
 
+#TODO add joy drift if -10>x>10 ignore command
+
 cmd_vel_msg = Twist()
 vel_linear = 0
 vel_angular = 0
@@ -21,7 +23,7 @@ controler_buttons = {"square": None,
 
 
 MAX_SPEED_ROBOT_LINEAR = 10 
-MAX_SPEED_ROBOT_ANGULAR = 3
+MAX_SPEED_ROBOT_ANGULAR = 0.2
 MAX_VALUE_CONTROLER = 127
 
 
