@@ -1,17 +1,24 @@
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float64
+from std_msgs.msg import Float64, Bool
+
 
 desired_position = 0.0
 tolerance = 0.2
+active_pid = False
+
+def turn_on_controller_callback(msg):
+    global active_pid
+    active_pid = msg.data
 
 def position_callback(position_msg):
     global desired_position
     desired_position = position_msg.data
 
 def odom_callback(odom_msg):
-    global desired_position, tolerance
+    global desired_position, tolerance, active_pid
+
     current_position = odom_msg.pose.pose.position.x
     error = desired_position - current_position
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -20,13 +27,22 @@ def odom_callback(odom_msg):
     if abs(error) < tolerance:
         vel_msg.linear.x = 0.0
     else:
-        Kp = 0.5
-        vel_msg.linear.x = Kp * error
+        # print(active_pid)
+        if(active_pid):
+            Kp = 0.5
+            vel_msg.linear.x = Kp * error
+        else:
+            vel_msg.linear.x = 0.0
+
+
+   
+
     pub.publish(vel_msg)
 
 def control_position():
     rospy.init_node('position_controller', anonymous=True)
     rospy.Subscriber("/control/position/x", Float64, position_callback)
+    rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
     rospy.Subscriber("/odom", Odometry, odom_callback)
     rospy.spin()
 

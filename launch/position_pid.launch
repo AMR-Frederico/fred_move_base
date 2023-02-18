@@ -2,7 +2,8 @@
 
     <node name="position_control_node" 
         pkg="fred_move_base" 
-        type="postion_control.py"
+        type="position_control.py"
+        output="screen"
         >
         
     </node>

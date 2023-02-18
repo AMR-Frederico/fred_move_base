@@ -4,6 +4,7 @@ import rospy
 from geometry_msgs.msg import Twist
 from std_msgs.msg import Float32
 from std_msgs.msg import Int32
+from std_msgs.msg import Int16
 
 safe_cmd_vel_msg = Twist()
 # TOPICOS
@@ -17,15 +18,28 @@ distanceSensor = []
 safeValue = 200
 
 abort = False
-pressed = True
+abort_status = False
+last_abort_status = False
+
+safe_ultrasonic_distance = 20
+
 distance_detected = 1000
 
-def abort_move():
+distance_detected_left = 0
+distance_detected_middle = 0
+distance_detected_right = 0
+
+def callbackAbortMove(msg):
+    global last_abort_status
+    global abort_status
     global abort
-    abort = True
-    safe_cmd_vel_msg.linear.x = 0
-    safe_cmd_vel_msg.angular.z = 0
-    safe_cmd_vel_pub.publish(safe_cmd_vel_msg)
+    abort_status = msg.data
+    if(abort_status > last_abort_status): 
+        abort = not abort
+
+    last_abort_status = abort_status
+    # print(abort)
+
 
 def callbackSensorLeft(msg):
     global distance_detected_left
@@ -43,6 +57,8 @@ def callbackSensorRight(msg):
     global distance_detected_right
     distance_detected_right = msg.data
     #print(distance_detected_right)
+    global safe_ultrasonic_distance
+    safe_ultrasonic_distance = 20
 
 def callbackSafeDistance(msg):
     global safe_ultrasonic_distance
@@ -52,28 +68,39 @@ def callbackSafeDistance(msg):
 def callbackCmdVel(msg):
     global abort
 
+    global distance_detected_left
+    global distance_detected_middle
+    global distance_detected_right
+
+    global safe_ultrasonic_distance
+
     #print(abort)
     # CHECA se tem algo na frente dele
 
     if(not abort):
         #print(distance_detected)
-        global distance_detected_left
-        global distance_detected_middle
-        global distance_detected_right
 
         KP = (distance_detected_left + distance_detected_middle + distance_detected_right)/3
-        KP = KP/200   # 357cm -> alcance máximo do sensor
+        KP = KP/300   # 357cm -> alcance máximo do sensor
                       # a ideia é fazer um fator de correção de acordo com a proximidade do objeto
         if(KP > 1):
             KP = 1
-        if((distance_detected_left <= 20) or (distance_detected_middle <= 20) or (distance_detected_right <= 20)): # safe distance = 20cm 
+            
+        # safe distance vem do controle de posição
+        if((distance_detected_left <= safe_ultrasonic_distance) or (distance_detected_middle <= safe_ultrasonic_distance) or (distance_detected_right <= safe_ultrasonic_distance)):
             safe_cmd_vel_msg.linear.x = 0
             safe_cmd_vel_msg.angular.z = 0
-            print("DANGER -> STOPPING ROBOT")
+            print("DANGER -> obstacle ahead")
         else:
             safe_cmd_vel_msg.linear.x = msg.linear.x*KP
             safe_cmd_vel_msg.angular.z = msg.angular.z*KP
             print("safe")
+    
+    else: 
+        safe_cmd_vel_msg.linear.x = 0
+        safe_cmd_vel_msg.angular.z = 0
+        print("DANGER -> joy requests break")
+        
 
     #print(f"X { safe_cmd_vel_msg.linear.x} Z: {safe_cmd_vel_msg.angular.z}")
     safe_cmd_vel_pub.publish(safe_cmd_vel_msg)
@@ -87,7 +114,9 @@ if __name__ == '__main__':
     rospy.Subscriber('sensor/ultrasonic/middle/distance', Int32, callbackSensorMiddle)
     rospy.Subscriber('sensor/ultrasonic/right/distance', Int32, callbackSensorRight)
 
-    rospy.Subscriber('safety/ultrasonic/distance', Int32, callbackSafeDistance)
+    #rospy.Subscriber('safety/ultrasonic/distance', Int32, callbackSafeDistance)
+
+    rospy.Subscriber('joy/controler/ps4/break', Int16, callbackAbortMove)
 
     while not rospy.is_shutdown():
 
