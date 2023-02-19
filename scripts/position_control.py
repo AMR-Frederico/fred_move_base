@@ -27,17 +27,12 @@ def odom_callback(odom_msg):
     if abs(error) < tolerance:
         vel_msg.linear.x = 0.0
     else:
-        # print(active_pid)
-        if(active_pid):
-            Kp = 0.5
-            vel_msg.linear.x = Kp * error
-        else:
-            vel_msg.linear.x = 0.0
+        Kp = 0.5
+        vel_msg.linear.x = Kp * error
+       
+    if(active_pid):   
+        pub.publish(vel_msg)
 
-
-   
-
-    pub.publish(vel_msg)
 
 def control_position():
     rospy.init_node('position_controller', anonymous=True)

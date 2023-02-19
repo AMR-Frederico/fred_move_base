@@ -5,7 +5,8 @@ from math import sin, cos, pi
 import rospy
 import tf
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Float32
+from std_msgs.msg import Float32,Bool
+
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
 # Parameters
@@ -17,6 +18,7 @@ right_ticks = 0
 last_left_ticks = 0
 last_right_ticks = 0
 heading = 0
+reset_odom = False
 
 x = 0.0
 y = 0.0
@@ -26,6 +28,9 @@ vx = 0.0
 vy = 0.0
 vth = 0.0
 
+def reset_callback(msg):
+    global reset_odom
+    reset_odom = msg.data
 
 def leftTicksCallback(msg):
     global left_ticks
@@ -52,6 +57,8 @@ right_ticks_sub = rospy.Subscriber(
 heading_sub = rospy.Subscriber("sensor/imu/yaw", Float32, headingCB)
 odom_broadcaster = tf.TransformBroadcaster()
 
+reset_odom_sub = rospy.Subscriber("/odom/reset",Bool,reset_callback)
+
 current_time = rospy.Time.now()
 last_time = rospy.Time.now()
 
@@ -59,7 +66,7 @@ r = rospy.Rate(10)
 
 while not rospy.is_shutdown():
     current_time = rospy.Time.now()
-    print(left_ticks, right_ticks)
+    # print(left_ticks, right_ticks)
 
     delta_L = left_ticks - last_left_ticks
     delta_R = right_ticks - last_right_ticks
@@ -86,6 +93,11 @@ while not rospy.is_shutdown():
     y += dy
     # th = (th+dth) % (2 * pi)
     th = heading
+
+    if(reset_odom):
+        x = 0 
+        y = 0
+        th = 0
 
     odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
