@@ -7,6 +7,8 @@ from std_msgs.msg import Int32
 from std_msgs.msg import Int16
 from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
+from  numpy import log 
+
 
 # TOPICOS
 safe_cmd_vel_msg = Twist()
@@ -20,13 +22,13 @@ safety_stop_pub = rospy.Publisher('/safety/emergency/stop', Bool, queue_size=10)
 distanceSensor = []
 safeValue = 200
 
-abort = False
+abort = True
 abort_status = False
 last_abort_status = False
 
-safe_ultrasonic_distance = 20
+safe_ultrasonic_distance = 80
 
-distance_detected = 1000
+K = -4
 
 distance_detected_left = 0
 distance_detected_middle = 0
@@ -38,6 +40,9 @@ vel_angular = 0
 led_sinalization = False
 led_sinalization_status = False
 led_sinalization_last_status = False
+
+MAX_SPEED_LINEAR = 1.5 
+MAX_SPEED_ANGULAR = 20 
 
 
 def callbackAbortMove(msg):
@@ -68,8 +73,7 @@ def callbackSensorRight(msg):
     global distance_detected_right
     distance_detected_right = msg.data
     #print(distance_detected_right)
-    global safe_ultrasonic_distance
-    safe_ultrasonic_distance = 20
+
 
 def callbackSafeDistance(msg):
     global safe_ultrasonic_distance
@@ -89,7 +93,7 @@ def callbackCmdVel(msg):
 
 if __name__ == '__main__':
     rospy.init_node('cmd_vel_safe')
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(100)
 
     rospy.Subscriber("/cmd_vel", Twist, callbackCmdVel)
     rospy.Subscriber('joy/controler/ps4/break', Int16, callbackAbortMove)
@@ -101,53 +105,84 @@ if __name__ == '__main__':
     rospy.Subscriber('safety/ultrasonic/distance', Int32, callbackSafeDistance)
     
     while not rospy.is_shutdown():
-        #print(abort)
+      
     # CHECA se tem algo na frente dele
 
-        if(not abort):
-            #print(distance_detected)
+        smalest_reading = 500 #max leitor reading = 357 [cm] -> each loop 
+        safe = not abort
 
-            KP = (distance_detected_left + distance_detected_middle + distance_detected_right)/3
-            KP = 1   # 357cm -> alcance máximo do sensor
-                        # a ideia é fazer um fator de correção de acordo com a proximidade do objeto
-            if(KP > 1):
-                KP = 1
+        readings_sonar = [distance_detected_left,distance_detected_middle ,distance_detected_right]
+
+        for i in range(0,2):
+            if(readings_sonar[i]<smalest_reading):
+                smalest_reading = readings_sonar[i]
+
+
+        
+        safety_corretion = smalest_reading/(2*safe_ultrasonic_distance)
+
+        
+
+        if(safety_corretion > 1): 
+            safety_corretion= 1
+
+        if(safety_corretion < 0.5):
+
+            safety_corretion = 0
+
+
+        danger_left = distance_detected_left <= safe_ultrasonic_distance
+        danger_middle = distance_detected_middle <= safe_ultrasonic_distance
+        danger_right = distance_detected_right <= safe_ultrasonic_distance
+
+        danger_distance = danger_left or danger_middle or danger_right
+        safe_distance = not danger_distance
+
+        if(safe): #comando do controle manual 
                 
-            # safe distance vem do controle de posição
-            if((distance_detected_left <= safe_ultrasonic_distance) or (distance_detected_middle <= safe_ultrasonic_distance) or (distance_detected_right <= safe_ultrasonic_distance)):
-                safe_cmd_vel_msg.linear.x = 0
-                safe_cmd_vel_msg.angular.z = 0
-                led_sinalization_last_status = True
-
-                print("DANGER -> obstacle ahead")
+            # mais perto de um obstaculo do que a distancia segura 
+            if(danger_distance):
+                safe_cmd_vel_msg.linear.x =  K*cmd_vel.linear.x
+                safe_cmd_vel_msg.angular.z = K*cmd_vel.angular.z
+               
             
-            else:
-                safe_cmd_vel_msg.linear.x = cmd_vel.linear.x*KP
-                safe_cmd_vel_msg.angular.z = cmd_vel.angular.z*KP
-                led_sinalization_status = False
+            if(safe_distance):
+                safe_cmd_vel_msg.linear.x = (cmd_vel.linear.x)*safety_corretion
+                safe_cmd_vel_msg.angular.z = (cmd_vel.angular.z)*safety_corretion
+                
+                
+        if(abort):
+            safe_cmd_vel_msg.linear.x =  K*cmd_vel.linear.x
+            safe_cmd_vel_msg.angular.z =  K*cmd_vel.angular.z
+            
+        
+        led_sinalization_status = abort or danger_distance
 
-                print("safe")
-        
-        else: 
-            safe_cmd_vel_msg.linear.x = 0
-            safe_cmd_vel_msg.angular.z = 0
-            print("DANGER -> joy requires stop")
-            led_sinalization_status= True
-        
-        safe_cmd_vel_pub.publish(safe_cmd_vel_msg)
+        #saturação da velocidade linear 
+        if (safe_cmd_vel_msg.linear.x > MAX_SPEED_LINEAR):
+            safe_cmd_vel_msg.linear.x = MAX_SPEED_LINEAR
+        elif(safe_cmd_vel_msg.linear.x < -MAX_SPEED_LINEAR):
+            safe_cmd_vel_msg.linear.x = -MAX_SPEED_LINEAR
+
+        #saturação da velocidade angular 
+        if (safe_cmd_vel_msg.angular.z > MAX_SPEED_ANGULAR):
+            safe_cmd_vel_msg.angular.z = MAX_SPEED_ANGULAR
+        elif(safe_cmd_vel_msg.angular.z < -MAX_SPEED_ANGULAR):
+            safe_cmd_vel_msg.angular.z = -MAX_SPEED_ANGULAR
+
 
         if ((led_sinalization_status == False) and (led_sinalization_last_status == False)): 
             led_sinalization = False
-            print(led_sinalization_status)
+           
         else: 
             led_sinalization = True
-            print("sinalization -> true")
+            
 
         safety_stop_msg.data = led_sinalization
-        safety_stop_pub.publish(safety_stop_msg)
         led_sinalization_last_status = led_sinalization_status
 
-    
+        safety_stop_pub.publish(safety_stop_msg)
+        safe_cmd_vel_pub.publish(safe_cmd_vel_msg)
         rate.sleep()
 
 # print(start)

@@ -30,8 +30,8 @@ controler_buttons = {"square": None,
                      "R_X":0}
 
 
-MAX_SPEED_ROBOT_LINEAR = 10 
-MAX_SPEED_ROBOT_ANGULAR = 0.2
+MAX_SPEED_ROBOT_LINEAR = 5
+MAX_SPEED_ROBOT_ANGULAR = 6*7
 MAX_VALUE_CONTROLER = 127
 
 
@@ -97,6 +97,9 @@ if __name__ == '__main__':
         
         vel_angular = controler_buttons["R_Y"]*(MAX_SPEED_ROBOT_ANGULAR/MAX_VALUE_CONTROLER) #regra de tres equivalendo a velocidade maxima do controle com a do robo 
         vel_linear = controler_buttons["R_X"]*(MAX_SPEED_ROBOT_LINEAR/MAX_VALUE_CONTROLER)
+
+        ## saturação controle 
+        
 
         cmd_vel_msg.linear.x = vel_linear
         cmd_vel_msg.angular.z = vel_angular

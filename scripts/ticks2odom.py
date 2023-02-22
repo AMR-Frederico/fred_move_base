@@ -87,11 +87,11 @@ while not rospy.is_shutdown():
         iccY = y+radius*cos(th)
 
         dx = cos(dth) * (x-iccX) - sin(dth) * (y-iccY) + iccX - x
-        dy = sin(dth) * (x-iccX) + cos(dt) * (y-iccY) + iccY - y
+        dy = sin(dth) * (x-iccX) + cos(dth) * (y-iccY) + iccY - y
 
     x += dx
     y += dy
-    # th = (th+dth) % (2 * pi)
+    # th = (th+dth) % (2*pi)
     th = heading
 
     if(reset_odom):
