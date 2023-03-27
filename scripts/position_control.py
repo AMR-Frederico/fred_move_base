@@ -8,17 +8,19 @@ from std_msgs.msg import Float32
 from std_msgs.msg import Bool 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
-
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from time import time 
 import math 
 
 ## ------------------------------- class pid 
 
 class PositionController: 
-    def __init__(self, KP, KI, KD):
+    def __init__(self, KP, KI, KD,start_up):
         self.KP = KP
         self.KD = KD 
         self.KI = KI
+
+        self.START_UP_ERROR = 0.3
 
         self.time = time()
         self.last_time = time()
@@ -29,6 +31,7 @@ class PositionController:
         self.delta_error = 0
 
         self.integral = 0
+        self.start_up = start_up
     
     def proporcional(self):
 
@@ -58,6 +61,8 @@ class PositionController:
         self.KD = kd
 
         self.error = error
+        
+            
 
         self.time = time()
         self.delta_time = self.time - self.last_time
@@ -70,23 +75,32 @@ class PositionController:
         self.last_error = self.error
         self.last_time = self.time
 
+        if(abs(self.error) < self.START_UP_ERROR):
+            if(self.start_up!=0):
+                if(output > start_up):
+                    return output
+                else:   
+                    return start_up
+            
+
+
         return output
 
 ## ------------------------------------ end of class
 
 
 ## ----- constants pid controller -> linear 
-KP_linear = 0.25
-KI_linear = 0.01
+KP_linear = 0.35 #0.35
+KI_linear = 0.05
 KD_linear = 0
 
 ## ----- constants pid controller -> angular 
-KP_angular = 6.3 #0.5
-KI_angular = 1
+KP_angular = 20   #6.3
+KI_angular = 1     #1
 KD_angular = 0
 
-angular = PositionController(KP_angular, KI_angular, KD_angular)   # (p, i, d) correction in y axis
-linear = PositionController(KP_linear, KI_linear, KD_linear)    # (p, i, d) correction in x axis
+angular = PositionController(KP_angular, KI_angular, KD_angular,0)   # (p, i, d) correction in y axis
+linear = PositionController(KP_linear, KI_linear, KD_linear,0)    # (p, i, d) correction in x axis
 
 setPoint_x = 0
 currentPosition_x = 0
@@ -155,7 +169,7 @@ def ki_angular_callback(msg):
 
 def robot_yaw_callback(msg):
     global currentTheta
-    currentTheta = msg.data
+    #currentTheta = msg.data
 
 
 def odom_callback(odom_msg):
@@ -168,6 +182,12 @@ def odom_callback(odom_msg):
     # pega a posição pelo topico da odometria
     currentPosition_x = odom_msg.pose.pose.position.x
     currentPosition_y = odom_msg.pose.pose.position.y
+    current_quat = odom_msg.pose.pose.orientation
+    quat_list = [current_quat.x,current_quat.y,current_quat.z,current_quat.w]
+    (roll,pitch,yaw) = euler_from_quaternion(quat_list)
+    current_theta = yaw
+    print(current_theta)
+
 
     delta_x = setPoint_x - currentPosition_x
     delta_y = setPoint_y - currentPosition_y

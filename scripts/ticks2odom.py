@@ -28,6 +28,9 @@ vx = 0.0
 vy = 0.0
 vth = 0.0
 
+global zero_ref_th
+zero_ref_th = 0 
+
 def reset_callback(msg):
     global reset_odom
     reset_odom = msg.data
@@ -91,13 +94,16 @@ while not rospy.is_shutdown():
 
     x += dx
     y += dy
-    # th = (th+dth) % (2*pi)
-    th = heading
-
+    #th = (th+dth) % (2*pi)
+    th = heading - zero_ref_th
+    print(zero_ref_th)
     if(reset_odom):
+
+        zero_ref_th = th
+        #th = 0
         x = 0 
         y = 0
-        th = 0
+        
 
     odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
