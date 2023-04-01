@@ -79,14 +79,14 @@ class PositionController:
 
 
 ## ----- constants pid controller -> linear 
-KP_linear = 0.25
-KI_linear = 0.01
-KD_linear = 0
+KP_linear = 0.35
+KI_linear = 0.05
+KD_linear = 0.5
 
 ## ----- constants pid controller -> angular 
 KP_angular = 6.3 #0.5
 KI_angular = 1
-KD_angular = 0
+KD_angular = 0.5
 
 angular = PositionController(KP_angular, KI_angular, KD_angular)   # (p, i, d) correction in y axis
 linear = PositionController(KP_linear, KI_linear, KD_linear)    # (p, i, d) correction in x axis
@@ -103,6 +103,9 @@ currentTheta = 0
 Tolerance_theta = math.pi/10   # value in rad 
 
 active_pid = True
+
+delta_x = 0
+delta_y = 0
 
 ### -------- TOPICS
 error_angular_msg = Float32()
@@ -123,6 +126,7 @@ def setpoint_callback(msg):
     global setpoint_x, setpoint_y, setpoint_theta
     setpoint_x = msg.x
     setpoint_y = msg.y
+    setpoint_theta = msg.theta
 
 def kp_linear_callback(msg):
     global KP_linear
@@ -165,23 +169,20 @@ def odom_callback(odom_msg):
     delta_x = setpoint_x - currentPosition_x
     delta_y = setpoint_y - currentPosition_y
     
-    setpoint_theta = math.atan(delta_x, delta_y)
+    if(delta_x == 0) or (delta_y == 0):
+        setpoint_theta = 0
+    else:
+        setpoint_theta = math.atan(delta_x/delta_y)
 
-    error_linear = math.hypot(delta_y,delta_x)
+    error_linear = math.hypot(delta_x, delta_y)
     error_angular = setpoint_theta - currentTheta
+
+    if (delta_x < 0):
+        error_linear = (-1)*error_linear
 
     #  condição para complementar o angulo caso necessário
     if (error_angular < 0 and currentTheta > 0):
         error_angular = error_angular + 2*math.pi; 
-
-    # if(delta_x == 0) or (delta_y == 0):
-    #     error_angular = 0
-    # else:
-    #     # error_angular = math.atan(delta_y/delta_x) - currentTheta
-    #     error_angular =  currentTheta
-
-    # print(f"error linear {error_linear}")
-    # print(f"error angular {error_angular}")
     
     error_angular_msg.data = error_angular
     error_linear_msg.data = error_linear
@@ -198,12 +199,17 @@ def odom_callback(odom_msg):
        vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear)
        vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_angular)
     
-    # print(f"velocidade linear {vel_msg.linear.x}")
-    # print(f"velocidade angular {vel_msg.angular.z}")
+    print(f"setpoint x {setpoint_x}")
+    print(f"setpoint y {setpoint_y}")
+
+    print(f"delta x {delta_x}")
+    print(f"delta y {delta_y}")
+
     print(f"erro angular: {error_angular} | error linear: {error_linear} | vel_linear: {vel_msg.linear.x} | vel_angular: {vel_msg.angular.z}")
 
     if(active_pid):   
         cmd_vel_pub.publish(vel_msg)
+        print("publicando velocidade")
 
 
 
