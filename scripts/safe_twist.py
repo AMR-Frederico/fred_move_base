@@ -7,6 +7,7 @@ from std_msgs.msg import Int32
 from std_msgs.msg import Int16
 from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Range
 from  numpy import log 
 
 
@@ -31,7 +32,7 @@ safe_ultrasonic_distance = 80
 K = -4
 
 distance_detected_left = 0
-distance_detected_middle = 0
+distance_detected_back = 0
 distance_detected_right = 0
 
 vel_linear = 0
@@ -59,19 +60,19 @@ def callbackAbortMove(msg):
 
 def callbackSensorLeft(msg):
     global distance_detected_left
-    distance_detected_left = msg.data
+    distance_detected_left = msg.range
     #print(distance_detected_left)
 
 
-def callbackSensorMiddle(msg):
-    global distance_detected_middle
-    distance_detected_middle = msg.data
-    #print(distance_detected_middle)
+def callbackSensorBack(msg):
+    global distance_detected_back
+    distance_detected_back = msg.range
+    #print(distance_detected_back)
 
 
 def callbackSensorRight(msg):
     global distance_detected_right
-    distance_detected_right = msg.data
+    distance_detected_right = msg.range
     #print(distance_detected_right)
 
 
@@ -99,9 +100,9 @@ if __name__ == '__main__':
     rospy.Subscriber('joy/controler/ps4/break', Int16, callbackAbortMove)
     rospy.Subscriber('odom', Odometry, callbackOdometry)
 
-    rospy.Subscriber('sensor/ultrasonic/left/distance', Int32, callbackSensorLeft)
-    rospy.Subscriber('sensor/ultrasonic/middle/distance', Int32, callbackSensorMiddle)
-    rospy.Subscriber('sensor/ultrasonic/right/distance', Int32, callbackSensorRight)
+    rospy.Subscriber('sensor/range/ultrasonic/left', Range, callbackSensorLeft)
+    rospy.Subscriber('sensor/range/ultrasonic/right', Range, callbackSensorRight)
+    rospy.Subscriber('sensor/range/ultrasonic/back', Range, callbackSensorBack)
     rospy.Subscriber('safety/ultrasonic/distance', Int32, callbackSafeDistance)
     
     while not rospy.is_shutdown():
@@ -111,7 +112,7 @@ if __name__ == '__main__':
         smalest_reading = 500 #max leitor reading = 357 [cm] -> each loop 
         safe = not abort
 
-        readings_sonar = [distance_detected_left,distance_detected_middle ,distance_detected_right]
+        readings_sonar = [distance_detected_left,distance_detected_back ,distance_detected_right]
 
         for i in range(0,2):
             if(readings_sonar[i]<smalest_reading):
@@ -132,7 +133,7 @@ if __name__ == '__main__':
 
 
         danger_left = distance_detected_left <= safe_ultrasonic_distance
-        danger_middle = distance_detected_middle <= safe_ultrasonic_distance
+        danger_middle = distance_detected_back <= safe_ultrasonic_distance
         danger_right = distance_detected_right <= safe_ultrasonic_distance
 
         danger_distance = danger_left or danger_middle or danger_right

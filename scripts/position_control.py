@@ -107,6 +107,9 @@ Tolerance_theta = math.pi/10   # value in rad
 
 active_pid = True
 
+delta_x = 0
+delta_y = 0
+
 ### -------- TOPICS
 error_angular_msg = Float32()
 error_linear_msg = Float32()
@@ -126,6 +129,7 @@ def setpoint_callback(msg):
     global setpoint_x, setpoint_y, setpoint_theta
     setpoint_x = msg.x
     setpoint_y = msg.y
+    setpoint_theta = msg.theta
 
 def kp_linear_callback(msg):
     global KP_linear
@@ -177,6 +181,9 @@ def odom_callback(odom_msg):
     setpoint_theta = math.atan2(delta_y, delta_x)
     error_angular = setpoint_theta - currentTheta
 
+    if (delta_x < 0):
+        error_linear = (-1)*error_linear
+
     #  condição para complementar o angulo caso necessário
     if (error_angular > math.pi):
         error_angular -= 2*math.pi
@@ -207,6 +214,7 @@ def odom_callback(odom_msg):
 
     if(active_pid):   
         cmd_vel_pub.publish(vel_msg)
+        print("publicando velocidade")
 
 
 
