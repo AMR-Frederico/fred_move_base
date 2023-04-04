@@ -6,6 +6,7 @@ import rospy
 import tf
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32,Bool
+from sensor_msgs.msg import Imu 
 
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
@@ -28,6 +29,10 @@ vx = 0.0
 vy = 0.0
 vth = 0.0
 
+roll = 0
+pitch = 0
+yaw = 0
+
 def reset_callback(msg):
     global reset_odom
     reset_odom = msg.data
@@ -44,7 +49,9 @@ def rightTicksCallback(msg):
 
 def headingCB(msg):
     global heading
-    heading = msg.data
+    quarternion = [msg.orientation.x, msg.orientation.y, msg.orientation.z, msg.orientation.w]
+    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
+    heading = yaw
 
 
 rospy.init_node('odometry_publisher')
@@ -54,7 +61,7 @@ left_ticks_sub = rospy.Subscriber(
     "power/status/distance/ticks/left", Float32, leftTicksCallback)
 right_ticks_sub = rospy.Subscriber(
     "power/status/distance/ticks/right", Float32, rightTicksCallback)
-heading_sub = rospy.Subscriber("sensor/imu/yaw", Float32, headingCB)
+heading_sub = rospy.Subscriber("sensor/orientation/imu", Imu, headingCB)
 odom_broadcaster = tf.TransformBroadcaster()
 
 reset_odom_sub = rospy.Subscriber("/odom/reset",Bool,reset_callback)
@@ -91,7 +98,7 @@ while not rospy.is_shutdown():
 
     x += dx
     y += dy
-    # th = (th+dth) % (2*pi)
+    #th = (th+dth) % (2*pi)
     th = heading
 
     if(reset_odom):
@@ -106,7 +113,7 @@ while not rospy.is_shutdown():
         (x, y, 0.),
         odom_quat,
         current_time,
-        "base_link",
+        "base_footprint",
         "odom"
     )
 
@@ -122,7 +129,7 @@ while not rospy.is_shutdown():
         vy = dy/dt
         vth = dth/dt
 
-    odom.child_frame_id = "base_link"
+    odom.child_frame_id = "base_footprint"
     odom.twist.twist = Twist(Vector3(vx, vy, 0), Vector3(0, 0, vth))
 
     odom_pub.publish(odom)
