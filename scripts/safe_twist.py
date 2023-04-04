@@ -42,7 +42,7 @@ led_sinalization = False
 led_sinalization_status = False
 led_sinalization_last_status = False
 
-MAX_SPEED_LINEAR = 1.5 
+MAX_SPEED_LINEAR = 3 
 MAX_SPEED_ANGULAR = 20 
 
 
@@ -109,45 +109,60 @@ if __name__ == '__main__':
       
     # CHECA se tem algo na frente dele
 
-        smalest_reading = 500 #max leitor reading = 357 [cm] -> each loop 
+        smalest_reading_front = 500 #max leitor reading = 357 [cm] -> each loop 
+        smalest_reading_back = 500 #max leitor reading = 357 [cm] -> each loop 
+
         safe = not abort
 
-        readings_sonar = [distance_detected_left,distance_detected_back ,distance_detected_right]
-
-        for i in range(0,2):
-            if(readings_sonar[i]<smalest_reading):
-                smalest_reading = readings_sonar[i]
+        readings_sonar_front = [distance_detected_left, distance_detected_right]
+        readings_sonar_back = distance_detected_back 
 
 
+        for i in range(0,1):
+            if(readings_sonar_front[i]<smalest_reading_front):
+                smalest_reading_front = readings_sonar_front[i]
         
-        safety_corretion = smalest_reading/(2*safe_ultrasonic_distance)
+        safety_corretion_front = smalest_reading_front/(2*safe_ultrasonic_distance)
+        safety_corretion_back = readings_sonar_back/(2*safe_ultrasonic_distance)
 
-        
+        if(safety_corretion_back> 1): 
+            safety_corretion_back= 1
 
-        if(safety_corretion > 1): 
+        if(safety_corretion_back < 0.5):
+            safety_corretion_back = 0
+
+        if(safety_corretion_front> 1): 
             safety_corretion= 1
 
-        if(safety_corretion < 0.5):
-
-            safety_corretion = 0
-
+        if(safety_corretion_front < 0.5):
+            safety_corretion_front = 0
 
         danger_left = distance_detected_left <= safe_ultrasonic_distance
-        danger_middle = distance_detected_back <= safe_ultrasonic_distance
+        danger_back = distance_detected_back <= safe_ultrasonic_distance
         danger_right = distance_detected_right <= safe_ultrasonic_distance
 
-        danger_distance = danger_left or danger_middle or danger_right
-        safe_distance = not danger_distance
+        danger_distance_front = danger_left or danger_right
+        danger_distance_back = danger_back
+
+        safe_distance_front = not danger_distance_front
+        safe_distance_back = not danger_distance_back
 
         if(safe): #comando do controle manual 
                 
             # mais perto de um obstaculo do que a distancia segura 
-            if(danger_distance):
+            if(safe_distance_back):
+                safe_cmd_vel_msg.linear.x = - (cmd_vel.linear.x)*safety_corretion
+                safe_cmd_vel_msg.angular.z = - (cmd_vel.angular.z)*safety_corretion
+            
+            if(danger_distance_back):
+                safe_cmd_vel_msg.linear.x =  - K*cmd_vel.linear.x
+                safe_cmd_vel_msg.angular.z = - K*cmd_vel.angular.z
+            
+            if(danger_distance_front):
                 safe_cmd_vel_msg.linear.x =  K*cmd_vel.linear.x
                 safe_cmd_vel_msg.angular.z = K*cmd_vel.angular.z
-               
             
-            if(safe_distance):
+            if(safe_distance_front):
                 safe_cmd_vel_msg.linear.x = (cmd_vel.linear.x)*safety_corretion
                 safe_cmd_vel_msg.angular.z = (cmd_vel.angular.z)*safety_corretion
                 
@@ -157,7 +172,7 @@ if __name__ == '__main__':
             safe_cmd_vel_msg.angular.z =  K*cmd_vel.angular.z
             
         
-        led_sinalization_status = abort or danger_distance
+        led_sinalization_status = abort or danger_distance_back or danger_distance_front
 
         #saturação da velocidade linear 
         if (safe_cmd_vel_msg.linear.x > MAX_SPEED_LINEAR):
