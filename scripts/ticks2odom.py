@@ -62,7 +62,6 @@ left_ticks_sub = rospy.Subscriber(
 right_ticks_sub = rospy.Subscriber(
     "power/status/distance/ticks/right", Float32, rightTicksCallback)
 heading_sub = rospy.Subscriber("sensor/orientation/imu", Imu, headingCB)
-odom_broadcaster = tf.TransformBroadcaster()
 
 reset_odom_sub = rospy.Subscriber("/odom/reset",Bool,reset_callback)
 
@@ -123,7 +122,7 @@ while not rospy.is_shutdown():
     base_link_quat = tf.transformations.quaternion_from_euler(0, 0, 0)  # no rotation
     base_link_broadcaster = tf.TransformBroadcaster()
     base_link_broadcaster.sendTransform(
-        (0, 0, 0.08),  # offset between base_footprint and base_link in meters
+        (0., 0, 0.094),  # offset between base_footprint and base_link in meters
         base_link_quat,
         current_time,
         "base_link",
