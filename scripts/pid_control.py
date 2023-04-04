@@ -1,14 +1,13 @@
 from time import time
 
-
 class PositionController: 
     def __init__(self, KP, KI, KD):
         self.KP = KP
         self.KD = KD 
         self.KI = KI
 
-        self.time = 0
-        self.last_time = 0
+        self.time = time()
+        self.last_time = time()
         self.delta_time = 0
 
         self.error = 0
@@ -24,6 +23,10 @@ class PositionController:
     def integrative(self): 
 
         self.integral += self.error * self.delta_time
+            #anti wind-up
+        if(self.integral > 1.5 or self.integral < -1.5):
+            self.integral = 0
+        # print(self.integral)
         return self.integral * self.KI
 
     def derivative(self):
@@ -35,17 +38,20 @@ class PositionController:
             self.delta_error = 0
         return self.delta_error*self.KD
             
-    def output(self, setPoint, currentValue):
+    def output(self, kp, ki, kd, error):
+        self.KP = kp
+        self.KI = ki
+        self.KD = kd
 
-        self.error = setPoint - currentValue
+        self.error = error
 
         self.time = time()
         self.delta_time = self.time - self.last_time
 
         if (self.error != 0):
-            output = proporcional() + integrative() + derivative()
+            output = self.proporcional() + self.integrative() + self.derivative()
         else: 
-            output = proporcional() + derivative()
+            output = self.proporcional() + self.derivative()
         
         self.last_error = self.error
         self.last_time = self.time
