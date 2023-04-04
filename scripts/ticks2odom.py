@@ -55,7 +55,6 @@ left_ticks_sub = rospy.Subscriber(
 right_ticks_sub = rospy.Subscriber(
     "power/status/distance/ticks/right", Float32, rightTicksCallback)
 heading_sub = rospy.Subscriber("sensor/imu/yaw", Float32, headingCB)
-odom_broadcaster = tf.TransformBroadcaster()
 
 reset_odom_sub = rospy.Subscriber("/odom/reset",Bool,reset_callback)
 
@@ -101,13 +100,26 @@ while not rospy.is_shutdown():
 
     odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
-    # first, we'll publish the transform over tf
+    # compute the odometry relative to the footprint frame
+    odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
+    odom_broadcaster = tf.TransformBroadcaster()
     odom_broadcaster.sendTransform(
         (x, y, 0.),
         odom_quat,
         current_time,
-        "base_link",
+        "base_footprint",
         "odom"
+    )
+
+    # crate a frame between base_link e base_footprint
+    base_link_quat = tf.transformations.quaternion_from_euler(0, 0, 0)  # no rotation
+    base_link_broadcaster = tf.TransformBroadcaster()
+    base_link_broadcaster.sendTransform(
+        (0, 0, 0.08),  # offset between base_footprint and base_link in meters
+        base_link_quat,
+        current_time,
+        "base_link",
+        "base_footprint"
     )
 
     # next, we'll publish the odometry message over ROS
@@ -122,7 +134,7 @@ while not rospy.is_shutdown():
         vy = dy/dt
         vth = dth/dt
 
-    odom.child_frame_id = "base_link"
+    odom.child_frame_id = "base_footprint"
     odom.twist.twist = Twist(Vector3(vx, vy, 0), Vector3(0, 0, vth))
 
     odom_pub.publish(odom)
