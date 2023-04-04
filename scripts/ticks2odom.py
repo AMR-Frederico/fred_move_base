@@ -108,13 +108,26 @@ while not rospy.is_shutdown():
 
     odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
-    # first, we'll publish the transform over tf
+    # compute the odometry relative to the footprint frame
+    odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
+    odom_broadcaster = tf.TransformBroadcaster()
     odom_broadcaster.sendTransform(
         (x, y, 0.),
         odom_quat,
         current_time,
         "base_footprint",
         "odom"
+    )
+
+    # crate a frame between base_link e base_footprint
+    base_link_quat = tf.transformations.quaternion_from_euler(0, 0, 0)  # no rotation
+    base_link_broadcaster = tf.TransformBroadcaster()
+    base_link_broadcaster.sendTransform(
+        (0, 0, 0.08),  # offset between base_footprint and base_link in meters
+        base_link_quat,
+        current_time,
+        "base_link",
+        "base_footprint"
     )
 
     # next, we'll publish the odometry message over ROS
