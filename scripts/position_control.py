@@ -1,135 +1,61 @@
-# -*- coding: utf-8 -*-
-
-# /user/bin/env python3
 from pid_control import PositionController
 
 import rospy
+import math
 import tf
-import math 
 
-from std_msgs.msg import Float64
-from std_msgs.msg import Float32
-from std_msgs.msg import Bool 
-
+from std_msgs.msg import Bool, Float32
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist, Pose2D, Quaternion
 
-from geometry_msgs.msg import Twist
-from geometry_msgs.msg import Pose2D
+# ----- constants pid controller -> linear 
+KP_linear = 1 #0.25
+KI_linear = 0.1 #0.01
+KD_linear = 0.1 #0
 
-from time import time 
+# ----- constants pid controller -> angular 
+KP_angular = 1.1#6.3 #0.5
+KI_angular = 0.1#1
+KD_angular = 0#0
 
-## ------------------------------- class pid 
+# ----- setpoints / goal (x, y, theta)
+goal_pose = Pose2D
+goal_pose.x = 0
+goal_pose.y = 0
+goal_pose.theta = 0
 
-# class PositionController: 
-#     def __init__(self, KP, KI, KD):
-#         self.KP = KP
-#         self.KD = KD 
-#         self.KI = KI
+# ----- current robot pose/orientation (x, y, theta)
+current_pose = Pose2D
+current_quaternion = Quaternion
 
-#         self.time = time()
-#         self.last_time = time()
-#         self.delta_time = 0
+# ----- tolerance
+Tolerance_linear = 0.1          # in meters 
+Tolerance_angular = math.pi/2     # in rad 
+Distance_to_goal = 0.20            # in meters, for the exit point
 
-#         self.error = 0
-#         self.last_error = 0
-#         self.delta_error = 0
-
-#         self.integral = 0
-    
-#     def proporcional(self):
-
-#         return self.KP * self.error
-    
-#     def integrative(self): 
-
-#         self.integral += self.error * self.delta_time
-#             #anti wind-up
-#         if(self.integral > 1.5 or self.integral < -1.5):
-#             self.integral = 0
-#         # print(self.integral)
-#         return self.integral * self.KI
-
-#     def derivative(self):
-#         self.delta_error = self.error - self.last_error
-
-#         if(self.delta_error != 0):
-#             self.delta_error = self.delta_error/self.delta_time
-#         else:
-#             self.delta_error = 0
-#         return self.delta_error*self.KD
-            
-#     def output(self, kp, ki, kd, error):
-#         self.KP = kp
-#         self.KI = ki
-#         self.KD = kd
-
-#         self.error = error
-
-#         self.time = time()
-#         self.delta_time = self.time - self.last_time
-
-#         if (self.error != 0):
-#             output = self.proporcional() + self.integrative() + self.derivative()
-#         else: 
-#             output = self.proporcional() + self.derivative()
-        
-#         self.last_error = self.error
-#         self.last_time = self.time
-
-#         return output
-
-## ------------------------------------ end of class
-
-
-## ----- constants pid controller -> linear 
-KP_linear = 1#0.25
-KI_linear = 0#0.01
-KD_linear = 0#0
-
-## ----- constants pid controller -> angular 
-KP_angular = 0.5#6.3 #0.5
-KI_angular = 0.3#1
-KD_angular = 0.5#0
-
-angular = PositionController(KP_angular, KI_angular, KD_angular)   # (p, i, d) correction in y axis
-linear = PositionController(KP_linear, KI_linear, KD_linear)    # (p, i, d) correction in x axis
-
-setpoint_x = 1
-currentPosition_x = 0
-Tolerance_x = 0.2   # value in meters 
-
-setpoint_y = -1      # keep the robot on a straight line
-currentPosition_y = 0
-
-setpoint_theta = 0
-currentTheta = 0
-Tolerance_theta = math.pi/10   # value in rad 
-
+# ----- machine states
 active_pid = True
 
-delta_x = 0
-delta_y = 0
+# ------ pid config 
+angular = PositionController(KP_angular, KI_angular, KD_angular)  
+linear = PositionController(KP_linear, KI_linear, KD_linear)    
 
-### -------- TOPICS
-error_angular_msg = Float32()
-error_linear_msg = Float32()
-
-### -------- PUBLISHERS 
+# ------ publishers 
 error_angular_pub = rospy.Publisher("/control/position/debug/angular/error", Float32, queue_size = 10)
 error_linear_pub = rospy.Publisher("control/position/debug/linear/error", Float32, queue_size = 10)
 
+# ------ subcribers 
 cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+
+# ------ messages 
+error_angular_msg = Float32()
+error_linear_msg = Float32()
+
 vel_msg = Twist()
 
 def turn_on_controller_callback(msg):
     global active_pid
     active_pid = msg.data
-
-def setpoint_callback(msg):
-    global setpoint_x, setpoint_y, setpoint_theta
-    setpoint_x = msg.x
-    setpoint_y = msg.y
-    setpoint_theta = msg.theta
 
 def kp_linear_callback(msg):
     global KP_linear
@@ -155,70 +81,75 @@ def ki_angular_callback(msg):
     global KD_angular 
     KD_angular = msg.data
 
-def odom_callback(odom_msg):
-    global currentPosition_x, currentPosition_y, currentTheta
-    global setpoint_x, setpoint_y, setpoint_theta
-    global Tolerance_x, Tolerance_theta
+def setpoint_callback(msg): 
+    global goal_pose
+    goal_pose.x = msg.x
+    goal_pose.y = msg.y 
+    goal_pose.theta = msg.theta
+
+def odom_callback(odom_msg): 
+    global current_pose
+    global current_quaternion 
+    global goal_pose
+
+    current_pose.x = odom_msg.pose.pose.position.x
+    current_pose.y = odom_msg.pose.pose.position.y 
+    current_quaternion = odom_msg.pose.pose.orientation
+
+    # transforma quartenion em angulo de euler, e retira só o valor de yaw. 
+    current_pose.theta = tf.transformations.euler_from_quaternion([current_quaternion.x, current_quaternion.y, current_quaternion.z, current_quaternion.w])[2]
     
-    # pega a posição e orientação pelo /odom
-    currentPosition_x = odom_msg.pose.pose.position.x
-    currentPosition_y = odom_msg.pose.pose.position.y
-    quarternion = [odom_msg.pose.pose.orientation.x, odom_msg.pose.pose.orientation.y, odom_msg.pose.pose.orientation.z, odom_msg.pose.pose.orientation.w]
-    
-    # conversão quaternion para euler
-    (roll, pitch, yaw) = tf.transformations.euler_from_quaternion(quarternion)
-    currentTheta = yaw
-    
-    delta_x = setpoint_x - currentPosition_x
-    delta_y = setpoint_y - currentPosition_y
-    
-    # erro linear
-    error_linear = math.hypot(delta_x,delta_y)
-    if (currentPosition_x > setpoint_x):  # se o robô passar o setpoint em x, consequentimente deve ir para tras
+    # distance to the goal 
+    delta_x = goal_pose.x - current_pose.x
+    delta_y = goal_pose.y - current_pose.y 
+
+    error_linear = math.hypot(delta_x, delta_y)
+
+    # theta angle to reach the current goal 
+    theta_entrance = math.atan2(delta_x,delta_y) - current_pose.theta
+
+    # ajust signal of the error_linear
+    if (goal_pose.x < current_pose.x): 
         error_linear = - error_linear
-
-    # erro angular
-    setpoint_theta = math.atan2(delta_y, delta_x)
-    error_angular = setpoint_theta - currentTheta
-
-    if (delta_x < 0):
-        error_linear = (-1)*error_linear
-
-    #  condição para complementar o angulo caso necessário
-    if (error_angular > math.pi):
-        error_angular -= 2*math.pi
-    elif (error_angular < -math.pi):
-        error_angular += 2*math.pi
-
-    # print(f"error linear {error_linear}")
-    # print(f"error angular {error_angular}")
     
+    # if the robot is close enought to the goal, the error angular must consider de exit angle now
+    if (error_linear < Distance_to_goal): 
+        # theta angle for leave de currente goal and go to the next one
+        theta_exit = goal_pose.theta - current_pose.theta
+    else: 
+        theta_exit = 0
+    
+    # calcula o ângulo total e ajusta para o intervalo [-pi, pi]
+    error_angular = current_pose.theta + theta_entrance + theta_exit
+    error_angular = math.atan2(math.sin(error_angular), math.cos(error_angular))
+
+    # msg for the error topic 
     error_angular_msg.data = error_angular
     error_linear_msg.data = error_linear
-
+    
+    # publish the error
     error_angular_pub.publish(error_angular_msg)
     error_linear_pub.publish(error_linear_msg)
 
-    if (abs(error_linear) < Tolerance_x) and (abs(error_angular) < Tolerance_theta):
+    # while the robot is out the tolerance, compute PID, otherwise, send 0 
+    if (abs(error_linear) > Tolerance_linear and abs(error_angular) > Tolerance_angular):
+        vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_angular)
+        vel_msg.angular.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear)
+    else: 
         vel_msg.linear.x = 0.0
         vel_msg.angular.z = 0.0 
         print("no objetivo")
-    else:
 
-       vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear)
-       vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_angular)
-    
-    # print(f"velocidade linear {vel_msg.linear.x}")
-    # print(f"velocidade angular {vel_msg.angular.z}")
-    print(f"erro angular: {round(error_angular,3)} | error linear: {round(error_linear,3)} | vel_linear: {round(vel_msg.linear.x,3)} | vel_angular: {round(vel_msg.angular.z,0)}")
-
-    if(active_pid):   
+    # publish message if pid is active
+    if (active_pid): 
         cmd_vel_pub.publish(vel_msg)
-        print("publicando velocidade")
 
+    # debug
+    print(goal_pose.x)
+    print(f"erro angular: {round(error_angular,3)} | error linear: {round(error_linear,3)} | vel_linear: {round(vel_msg.linear.x,3)} | vel_angular: {round(vel_msg.angular.z,0)}")
+ 
 
-
-def control_position():
+def controller_position():
     rospy.init_node('position_controller', anonymous=True)
 
     rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
@@ -226,21 +157,18 @@ def control_position():
     rospy.Subscriber("/odom", Odometry, odom_callback)
     rospy.Subscriber("/control/position/setup/goal", Pose2D, setpoint_callback)
 
-    rospy.Subscriber("/control/position/setup/linear/kp", Float64, kp_linear_callback)
-    rospy.Subscriber("/control/position/setup/linear/ki", Float64, ki_linear_callback)
-    rospy.Subscriber("/control/position/setup/linear/kd", Float64, kd_linear_callback)
+    rospy.Subscriber("/control/position/setup/linear/kp", Float32, kp_linear_callback)
+    rospy.Subscriber("/control/position/setup/linear/ki", Float32, ki_linear_callback)
+    rospy.Subscriber("/control/position/setup/linear/kd", Float32, kd_linear_callback)
 
-    rospy.Subscriber("/control/position/setup/angular/kp", Float64, kp_angular_callback)
-    rospy.Subscriber("/control/position/setup/angular/ki", Float64, kd_angular_callback)
-    rospy.Subscriber("/control/position/setup/angular/kd", Float64, ki_angular_callback)
+    rospy.Subscriber("/control/position/setup/angular/kp", Float32, kp_angular_callback)
+    rospy.Subscriber("/control/position/setup/angular/ki", Float32, kd_angular_callback)
+    rospy.Subscriber("/control/position/setup/angular/kd", Float32, ki_angular_callback)
 
     rospy.spin()
 
 if __name__ == '__main__':
     try:
-        control_position()
+        controller_position()
     except rospy.ROSInterruptException:
         pass
-
-
-
