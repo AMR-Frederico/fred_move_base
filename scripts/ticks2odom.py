@@ -6,7 +6,7 @@ import rospy
 import tf
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32,Bool
-
+from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
 # Parameters
@@ -20,13 +20,18 @@ last_right_ticks = 0
 heading = 0
 reset_odom = False
 
-x = 0.0
+imu_quaternion = []
+
+# x = 0
+x = 0.24 #consider robot front  not base_link
 y = 0.0
 th = 0.0
 
 vx = 0.0
 vy = 0.0
 vth = 0.0
+
+heading_offset = 0.0 #offset para zerar o mpu 
 
 def reset_callback(msg):
     global reset_odom
@@ -44,7 +49,10 @@ def rightTicksCallback(msg):
 
 def headingCB(msg):
     global heading
-    heading = msg.data
+    global imu_quaternion
+
+    imu_quaternion = msg.orientation
+    heading = tf.transformations.euler_from_quaternion([imu_quaternion.x, imu_quaternion.y, imu_quaternion.z, imu_quaternion.w])[2]
 
 
 rospy.init_node('odometry_publisher')
@@ -54,7 +62,7 @@ left_ticks_sub = rospy.Subscriber(
     "power/status/distance/ticks/left", Float32, leftTicksCallback)
 right_ticks_sub = rospy.Subscriber(
     "power/status/distance/ticks/right", Float32, rightTicksCallback)
-heading_sub = rospy.Subscriber("sensor/imu/yaw", Float32, headingCB)
+heading_sub = rospy.Subscriber("sensor/orientation/imu", Imu, headingCB)
 
 reset_odom_sub = rospy.Subscriber("/odom/reset",Bool,reset_callback)
 
@@ -91,12 +99,14 @@ while not rospy.is_shutdown():
     x += dx
     y += dy
     # th = (th+dth) % (2*pi)
-    th = heading
+    th = heading - heading_offset
 
     if(reset_odom):
-        x = 0 
+        # x = 0
+        x = 0.24
         y = 0
-        th = 0
+        #th = 0
+        heading_offset = heading
 
     odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
