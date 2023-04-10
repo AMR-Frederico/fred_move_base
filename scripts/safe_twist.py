@@ -42,7 +42,7 @@ led_sinalization = False
 led_sinalization_status = False
 led_sinalization_last_status = False
 
-MAX_SPEED_LINEAR = 1.5 
+MAX_SPEED_LINEAR = 2 
 MAX_SPEED_ANGULAR = 20 
 
 
