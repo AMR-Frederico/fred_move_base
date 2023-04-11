@@ -74,9 +74,12 @@ KI_linear = 0.1#0.01
 KD_linear = 0 #0
 
 # ----- constants pid controller -> angular 
-KP_angular = 1#6.3 #0.5
+KP_angular = 10#6.3 #0.5
 KI_angular = 0#1
 KD_angular = 0#0
+
+max_linear = 3
+min_linear = 0.3
 
 # ----- setpoints / goal (x, y, theta)
 goal_pose = Pose2D()
@@ -91,7 +94,7 @@ current_quaternion = Quaternion()
 
 # ----- tolerance
 Tolerance_linear = 0.3         # in meters 
-Tolerance_angular = math.pi/2     # in rad 
+Tolerance_angular = 0.2        # in rad 
 Distance_to_goal = 0           # in meters, for the exit point
 
 # ----- machine states
@@ -104,15 +107,26 @@ linear = PositionController(KP_linear, KI_linear, KD_linear)
 # ------ publishers 
 error_angular_pub = rospy.Publisher("/control/position/debug/angular/error", Float32, queue_size = 10)
 error_linear_pub = rospy.Publisher("control/position/debug/linear/error", Float32, queue_size = 10)
-
-# ------ subcribers 
-cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+goal_reached_pub = rospy.Publisher("/goal_manager/goal/reached", Bool, queue_size = 10)
 
 # ------ messages 
 error_angular_msg = Float32()
 error_linear_msg = Float32()
+goal_reached_msg = Bool()
+
+# ------ subcribers 
+cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
 vel_msg = Twist()
+
+# entre -pi e pi
+def reduce_angle(angle):
+    # angle = angle % 2*math.pi
+    if angle > math.pi:
+        angle = angle - 2*math.pi
+    if angle < -math.pi:
+        angle = angle + 2*math.pi
+    return angle
 
 def turn_on_controller_callback(msg):
     global active_pid
@@ -155,60 +169,59 @@ def odom_callback(odom_msg):
     global current_quaternion 
     global goal_pose
 
+    # posição atual do robo de acordo com a odometria
     current_pose.x = odom_msg.pose.pose.position.x
     current_pose.y = odom_msg.pose.pose.position.y 
     current_quaternion = odom_msg.pose.pose.orientation
 
-    # transforma quartenion em angulo de euler, e retira só o valor de yaw. 
+    # transforma quaternion em ângulo de euler, e retira só o valor de yaw. 
     current_pose.theta = tf.transformations.euler_from_quaternion([current_quaternion.x, current_quaternion.y, current_quaternion.z, current_quaternion.w])[2]
+
+    # distancia ató o objetivo, em relação ao eixo x e ao eixo y
+    dx = goal_pose.x - current_pose.x
+    dy = goal_pose.y - current_pose.y
+
+    # erro angular
     
-    # distance to the goal 
-    delta_x = goal_pose.x - current_pose.x
-    delta_y = goal_pose.y - current_pose.y 
+    angulo_erro = math.atan2(dy,dx)
+    angulo_robo = current_pose.theta
+    print(f"dx{dx}; dy{dy}; atan{angulo_erro}")
 
-    error_linear = math.hypot(delta_x, delta_y)
+    # calculo do modulo do erro linear
+    error_linear = math.hypot(dx, dy)
 
-    # theta angle to reach the current goal 
-    print(delta_x == 0 or delta_y == 0)
-    if (delta_x == 0 or delta_y == 0): 
-        theta_entrance = 0
-    else:
-        theta_entrance = math.atan2(delta_x,delta_y) - current_pose.theta
+    # o trajeto do robo até o goal é um vetor em que o modulo é o erro linear, o angulo é o dth, mas ate o momento não tem sentido
+    # para isso, vamos projetar esse vetor no eixo x e no eixo y, para pegar o sentido
+    proj_x = dx * math.cos(angulo_erro) + dy * math.sin(angulo_erro)  # se proj_x > 0, vetor esta no sentido positivo de x
+    proj_y = -dx * math.sin(angulo_erro) + dy * math.cos(angulo_erro) # se proj_y > 0, vetor esta no sentido positivo de y
 
-    # ajust signal of the error_linear
-    if (goal_pose.x < current_pose.x): 
-        error_linear = - error_linear
-    
-    # if the robot is close enought to the goal, the error angular must consider de exit angle now
-    # if (error_linear < Distance_to_goal): 
-    #     print("correção theta de saida")
-    #     # theta angle for leave de currente goal and go to the next one
-    #     theta_exit = goal_pose.theta - current_pose.theta
-    # else: 
-        # theta_exit = 0
-    
-    # calcula o ângulo total e ajusta para o intervalo [-pi, pi]
-    error_angular = theta_entrance #+ theta_exit
+    error_angular = angulo_erro
 
-    # error_angular = current_pose.theta + theta_entrance + theta_exit
-    # error_angular = math.atan2(math.sin(error_angular), math.cos(error_angular))
-
-    # msg for the error topic 
+    # publish the error
     error_angular_msg.data = error_angular
     error_linear_msg.data = error_linear
-    
-    # publish the error
     error_angular_pub.publish(error_angular_msg)
     error_linear_pub.publish(error_linear_msg)
 
-    # while the robot is out the tolerance, compute PID, otherwise, send 0 
-    if (abs(error_linear) > Tolerance_linear or abs(error_angular) > Tolerance_angular):
-        vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_angular)
-        vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear)
+   # while the robot is out the tolerance, compute PID, otherwise, send 0
+    erro_orientacao = reduce_angle(angulo_erro - angulo_robo)
+    
+    if abs(erro_orientacao)>math.pi/3 and goal_pose.y > 2.0 and False:
+        vel_msg.linear.x = 0
+        if erro_orientacao > 0:
+            vel_msg.angular.z = 1
+        else:
+            vel_msg.angular.z = -1
+    elif (abs(dx) > Tolerance_linear or abs(dy) > Tolerance_angular):
+        # vel_msg.linear.x = 1 #linear.output(KP_linear, KI_linear, KD_linear, error_linear)
+        vel_msg.linear.x = (1-abs(erro_orientacao)/math.pi)*(max_linear - min_linear) + min_linear
+        vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, erro_orientacao)
+        goal_reached_msg.data = False
     else: 
-        vel_msg.linear.x = 0.0
-        vel_msg.angular.z = 0.0 
+        goal_reached_msg.data = True
         print("no objetivo")
+    
+    goal_reached_pub.publish(goal_reached_msg)
 
     # publish message if pid is active
     if (active_pid): 
@@ -217,10 +230,13 @@ def odom_callback(odom_msg):
     # debug
     print("CONTROL POSITION NODE -------------------------------------------------")
     print(f"SETPOINT -> x:{goal_pose.x} y:{goal_pose.y} theta:{round(goal_pose.theta,2)}")
-    print(f"DELTA -> x:{round(delta_x,2)}  y:{round(delta_y,2)}")
-    print(f"THETA -> entrance:{round(theta_entrance,2)}  exit:{round(math.atan2(delta_x,delta_y),2)}")
-    print(f"ERROR -> linear:{round(error_linear,2)}  angular:{round(error_angular,2)}")
+    print(f"CURRENT POSITION -> x:{round(current_pose.x,2)} y:{round(current_pose.y)} theta:{round(angulo_robo,3)}")
+    print(f"DELTA -> x:{round(dx,2)}  y:{round(dy,2)} angulo do erro:{round(angulo_erro,3)} ")
+    print(f"ERRO ORIENTACAO -> {erro_orientacao}")
+    print(f"THETA -> dth:{round(angulo_erro,2)}  th:{round(math.atan2(dx,dy),2)}")
+    print(f"ERROR -> linear:{round(error_linear,2)}")
     print(f"VELOCITY OUTPUT -> linear:{round(vel_msg.linear.x,2)}  angular:{round(vel_msg.angular.z,2)}")
+    print(f"PROJECTION -> x: {round(proj_x,2)} y:{round(proj_y,2)}  ")
     print("\n")
 
 def controller_position():
