@@ -31,7 +31,7 @@ controler_buttons = {"square": None,
 
 
 MAX_SPEED_ROBOT_LINEAR = 5
-MAX_SPEED_ROBOT_ANGULAR = 6*7
+MAX_SPEED_ROBOT_ANGULAR = 20
 MAX_VALUE_CONTROLER = 127
 
 
@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     sub_odom_reset = rospy.Publisher("odom/reset",Bool, queue_size = 1 )
     sub_change_mode = rospy.Publisher("/machine_state/control_mode/switch",Bool,queue_size = 1)
-
+    sub_goal_reset = rospy.Publisher("/goal_manager/goal/reset",Bool, queue_size=1)
 
     rate = rospy.Rate(10)
     while not rospy.is_shutdown():
@@ -112,6 +112,8 @@ if __name__ == '__main__':
         odom_reset = rising_edge(last_reset_odom,reset_odom)
         last_reset_odom = reset_odom
         sub_odom_reset.publish(odom_reset)
+        #names is wrong wont fix now sorry
+        sub_goal_reset.publish(odom_reset)
 
 
         #triangle
