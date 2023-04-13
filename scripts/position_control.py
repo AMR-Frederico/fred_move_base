@@ -77,7 +77,7 @@ KD_angular = 0#0
 
 # limites de vel linear
 max_linear = 3
-min_linear = 0.3
+min_linear = 1
 
 # ----- setpoints / goal (x, y, theta)
 goal_pose = Pose2D()
