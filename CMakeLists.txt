@@ -210,3 +210,14 @@ include_directories(
 catkin_install_python(PROGRAMS scripts/safe_twist.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+catkin_install_python(PROGRAMS scripts/ticks2odom.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+catkin_install_python(PROGRAMS scripts/position_control.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+catkin_install_python(PROGRAMS scripts/joy_esp_interface.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
