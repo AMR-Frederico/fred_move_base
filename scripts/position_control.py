@@ -71,18 +71,18 @@ class PIDController:
 # -------------------------------------------------- fim da classe
 
 # ----- constantes PID angular
-KP_angular = 8#6.3 #0.5
-KI_angular = 1.5#1
-KD_angular = 1#0
+KP_angular = 0.5#6.3 #0.5
+KI_angular = 0#1
+KD_angular = 0#0
 
 # ----- constants pid controller -> linear 
-KP_linear = 0.5 #0.25
-KI_linear = 0.1#0.01
+KP_linear = 0.1 #0.25
+KI_linear = 0#0.01
 KD_linear = 0 #0
 
 # limites de vel linear
-max_linear = 3
-min_linear = 1.3
+max_linear = 10
+min_linear = 0
 
 # ----- setpoints / goal (x, y, theta)
 goal_pose = Pose2D()
@@ -206,9 +206,9 @@ def position_control():
         # mapea a velocidade linear em função do erro de orientação, 
         # se o erro for máximo -> vel_linear mínima
         # sem o erro for mínimo -> vel_linear máxima
-        # vel_msg.linear.x = (1-abs(error_orientation)/math.pi)*(max_linear - min_linear) + min_linear
+        vel_msg.linear.x = (1-abs(error_orientation)/math.pi)*(max_linear - min_linear) + min_linear
         
-        vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear) 
+        # vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear) 
 
         # com isso só a velocidade angular passa pelo
         vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_orientation)

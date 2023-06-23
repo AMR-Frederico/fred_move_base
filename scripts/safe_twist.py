@@ -180,6 +180,7 @@ if __name__ == '__main__':
             
 
         safety_stop_msg.data = led_sinalization
+        print(led_sinalization)
         led_sinalization_last_status = led_sinalization_status
 
         safety_stop_pub.publish(safety_stop_msg)
