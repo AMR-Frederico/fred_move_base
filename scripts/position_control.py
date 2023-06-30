@@ -71,14 +71,14 @@ class PIDController:
 # -------------------------------------------------- fim da classe
 
 # ----- constantes PID angular
-KP_angular = 0.5#6.3 #0.5
-KI_angular = 0#1
-KD_angular = 0#0
+KP_angular = 100#6.3 #0.5
+KI_angular = 100#1
+KD_angular = 100#0
 
 # ----- constants pid controller -> linear 
-KP_linear = 0.1 #0.25
-KI_linear = 0#0.01
-KD_linear = 0 #0
+KP_linear = 100#0.25
+KI_linear = 100#0.01
+KD_linear = 100#0
 
 # limites de vel linear
 max_linear = 10
