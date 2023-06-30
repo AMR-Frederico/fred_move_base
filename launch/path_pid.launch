@@ -1,0 +1,11 @@
+<launch>
+
+    <node name="path_control_node" 
+        pkg="fred_move_base" 
+        type="path_control.py"
+        output="screen"
+        >
+        
+    </node>
+          
+</launch>

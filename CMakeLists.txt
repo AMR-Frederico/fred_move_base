@@ -221,3 +221,7 @@ catkin_install_python(PROGRAMS scripts/position_control.py
 catkin_install_python(PROGRAMS scripts/joy_esp_interface.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+catkin_install_python(PROGRAMS scripts/path_control.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
