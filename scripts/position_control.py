@@ -71,18 +71,13 @@ class PIDController:
 # -------------------------------------------------- fim da classe
 
 # ----- constantes PID angular
-KP_angular = 8#6.3 #0.5
-KI_angular = 1.5#1
-KD_angular = 1#0
-
-# ----- constants pid controller -> linear 
-KP_linear = 0.5 #0.25
-KI_linear = 0.1#0.01
-KD_linear = 0 #0
+KP_angular = 2
+KI_angular = 0
+KD_angular = 0
 
 # limites de vel linear
-max_linear = 3
-min_linear = 1.3
+max_linear = 2
+min_linear = 0
 
 # ----- setpoints / goal (x, y, theta)
 goal_pose = Pose2D()
@@ -96,7 +91,7 @@ current_pose = Pose2D()
 current_quaternion = Quaternion()
 
 # ----- tolerance
-Tolerance_linear = 0.5         # in meters 
+Tolerance_linear = 0.01        # in meters 
 Tolerance_angular = math.pi/2        # in rad 
 Distance_to_goal = 0           # in meters, for the exit point
 
@@ -104,7 +99,7 @@ active_pid = True
 
 # ------ pid config 
 angular = PIDController(KP_angular, KI_angular, KD_angular)   
-linear = PIDController(KP_linear, KI_linear, KD_linear)
+# linear = PIDController(KP_linear, KI_linear, KD_linear)
 
 # ------ publishers 
 error_angular_pub = rospy.Publisher("/control/position/debug/angular/error", Float32, queue_size = 10)
@@ -206,9 +201,9 @@ def position_control():
         # mapea a velocidade linear em função do erro de orientação, 
         # se o erro for máximo -> vel_linear mínima
         # sem o erro for mínimo -> vel_linear máxima
-        # vel_msg.linear.x = (1-abs(error_orientation)/math.pi)*(max_linear - min_linear) + min_linear
+        vel_msg.linear.x = (1-abs(error_orientation)/math.pi)*(max_linear - min_linear) + min_linear
         
-        vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear) 
+        # vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear) 
 
         # com isso só a velocidade angular passa pelo
         vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_orientation)
@@ -231,13 +226,13 @@ def position_control():
 
     # debug
     # print("CONTROL POSITION NODE -------------------------------------------------")
-    # print(f"SETPOINT -> x:{goal_pose.x} y:{goal_pose.y} theta:{round(goal_pose.theta,2)}")
-    # print(f"CURRENT POSITION -> x:{round(current_pose.x,2)} y:{round(current_pose.y)} theta:{round(angulo_robo,3)}")
+    print(f"SETPOINT -> x:{goal_pose.x} y:{goal_pose.y} theta:{round(goal_pose.theta,2)}")
+    print(f"CURRENT POSITION -> x:{round(current_pose.x,2)} y:{round(current_pose.y)} theta:{round(angulo_robo,3)}")
     # print(f"DELTA -> x:{round(dx,2)}  y:{round(dy,2)} angulo do erro:{round(angulo_erro,3)} ")
-    # print(f"ERRO ORIENTACAO -> {error_orientation}")
+    print(f"ERRO ORIENTACAO -> {error_orientation}")
     # print(f"THETA -> dth:{round(angulo_erro,2)}  th:{round(math.atan2(dx,dy),2)}")
-    # print(f"ERROR -> linear:{round(error_linear,2)}")
-    # print(f"VELOCITY OUTPUT -> linear:{round(vel_msg.linear.x,2)}  angular:{round(vel_msg.angular.z,2)}")
+    print(f"ERROR -> linear:{round(error_linear,2)}")
+    print(f"VELOCITY OUTPUT -> linear:{round(vel_msg.linear.x,2)}  angular:{round(vel_msg.angular.z,2)}")
     # # print(f"PROJECTION -> x: {round(proj_x,2)} y:{round(proj_y,2)}  ")
     # print("\n")
 
