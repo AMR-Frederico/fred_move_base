@@ -2,8 +2,9 @@
 
 import rospy
 import math
-
 import tf
+
+from tf.transformations import *
 import tf2_ros
 
 from std_msgs.msg import Bool, Float32
@@ -125,20 +126,19 @@ vel_msg = Twist()
 # ------ subcribers 
 cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
-
 # orientação e posição do robô com x+ apontado para trás e y+ para direita
 def backward_orientation(): 
-    global bkward_pose
+    global bkward_theta
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
     
     try:
-        transform = tf_buffer.lookup_transform("odom", "backward_orientation_link", rospy.Time(0))
+        transform = tf_buffer.lookup_transform("odom", "backward_orientation_link", rospy.Time(0),  rospy.Duration(0.3))
         
-        bkward_pose.x = transform.transform.translation.x
-        bkward_pose.y = transform.transform.translation.y
-        bkward_pose.theta = tf.transformations.euler_from_quaternion([
+        # bkward_pose.x = transform.transform.translation.x
+        # bkward_pose.y = transform.transform.translation.y
+        bkward_theta = tf.transformations.euler_from_quaternion([
             transform.transform.rotation.x,
             transform.transform.rotation.y,
             transform.transform.rotation.z,
@@ -148,38 +148,47 @@ def backward_orientation():
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
         rospy.logwarn("Failed to lookup transform from 'odom' to 'backward_orientation_link'")
     
-    return bkward_pose
+    return bkward_theta
 
 # orientação e posição do robô com x+ apontado para frente e y+ para esquerda
 def front_orientation():
-    global front_pose
+    global front_theta
 
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
 
     try:
-        transform = tf_buffer.lookup_transform('base_link', 'odom', rospy.Time(0), rospy.Duration(1.0))
+        transform = tf_buffer.lookup_transform("odom", "base_link", rospy.Time(0))
+        
+        # front_pose.x = transform.transform.translation.x
+        # front_pose.y = transform.transform.translation.y
+        front_theta = tf.transformations.euler_from_quaternion([
+            transform.transform.rotation.x,
+            transform.transform.rotation.y,
+            transform.transform.rotation.z,
+            transform.transform.rotation.w
+        ])[2]
+        
     except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-        rospy.logwarn("Failed to lookup transform between frames 'base_link' and 'odom'")
-        return None
+        rospy.logwarn("Failed to lookup transform from 'odom' to 'base_link'")
 
-    front_pose.theta = tf.transformations.euler_from_quaternion([
-        transform.transform.rotation.x,
-        transform.transform.rotation.y,
-        transform.transform.rotation.z,
-        transform.transform.rotation.w])[2]
-    front_pose.x = transform.transform.translation.x
-    front_pose.y = transform.transform.translation.y
-
-    return front_pose
+    return front_theta
 
 # reduzir ângulo entre -pi e pi
+# def reduce_angle(angle):
+#     # angle = angle % 2*math.pi
+#     if angle > math.pi:
+#         angle = angle - 2*math.pi
+#     if angle < -math.pi:
+#         angle = angle + 2*math.pi
+#     return angle
+
+# reduzir ângulo entre -2pi e 2pi
 def reduce_angle(angle):
-    # angle = angle % 2*math.pi
-    if angle > math.pi:
-        angle = angle - 2*math.pi
-    if angle < -math.pi:
-        angle = angle + 2*math.pi
+    if angle > 2*math.pi:
+        angle = angle - 4*math.pi
+    if angle < -2*math.pi:
+        angle = angle + 4*math.pi
     return angle
 
 # ativa o controle de posição
@@ -216,8 +225,8 @@ def odom_callback(odom_msg):
     global current_pose
     global current_quaternion 
 
-    goal_pose.x = 3
-    goal_pose.y = 3
+    goal_pose.x = -1
+    goal_pose.y = 0
 
     # posição atual do robo de acordo com a odometria
     current_pose.x = odom_msg.pose.pose.position.x
@@ -230,7 +239,7 @@ def odom_callback(odom_msg):
 def position_control(): 
 
     global goal_pose
-    global current_pose
+    global current_pose, current_quaternion
 
     # distancia até o objetivo, em relação ao eixo x e ao eixo y
     dx = goal_pose.x - current_pose.x
@@ -242,19 +251,46 @@ def position_control():
     # garante que o angulo esteja entre +- 2pi
     error_orientation = reduce_angle(angulo_erro - angulo_robo)
     
+
+    print("---------------------------------------------------")
     # se o erro de orientação for maior que 180°, consideramos a orientação reversa do robô
-    if abs(error_orientation) < math.pi:   
-        current_pose = front_orientation()
-        print("orientação positiva")
-    else:
-        current_pose = backward_orientation()
-        print("orientação negativa")
+
+    robot_backward_orientation = 1
+
+    if abs(error_orientation) > 2.6:   
+        robot_orientation = Quaternion()
+        
+        # Rotação de 180 graus em torno do eixo Z
+        q_rot = quaternion_from_euler(0, 0, math.pi)
+
+        # Aplica a rotação ao quaternion atual do IMU
+        robot_orientation = quaternion_multiply([current_quaternion.x, current_quaternion.y, current_quaternion.z, current_quaternion.w],q_rot)
+
+        current_pose.theta = tf.transformations.euler_from_quaternion([robot_orientation[0], robot_orientation[1], robot_orientation[2], robot_orientation[3]])[2]
+
+        # current_pose.theta = backward_orientation()
+        # print(f"current pose: x = {current_pose.x}   y = {current_pose.y}")
+        print("ORIENTACAO NEGATIVA")
+
+        angulo_robo = current_pose.theta
+
+        # garante que o angulo esteja entre +- 2pi
+        error_orientation = reduce_angle(angulo_erro - angulo_robo)
     
+        robot_backward_orientation = -1
+        # print(f"erro de orientação = {error_orientation}")
+        # print("-------------------------------------")
+
+    print(f"current pose: x = {current_pose.x}  y = {current_pose.y}")
+    print(f"goal pose:  x = {goal_pose.x}  y = {goal_pose.y}")
+    print(f"angulo do robo = {angulo_robo}")
+    print(f"angulo do erro = {angulo_erro}")
+    print(f"erro de orientação = {error_orientation}")
+
     # mapea a velocidade linear em função do erro de orientação, 
     # se o erro for máximo -> vel_linear mínima
     # sem o erro for mínimo -> vel_linear máxima
-    vel_msg.linear.x = (1-abs(error_orientation)/math.pi)*(max_linear - min_linear) + min_linear
-        
+    vel_msg.linear.x = ((1-abs(error_orientation)/math.pi)*(max_linear - min_linear) + min_linear)*robot_backward_orientation
 
     # com isso só a velocidade angular passa pelo
     vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_orientation)
