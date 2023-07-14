@@ -94,10 +94,10 @@ vel_msg = Twist()
 
 # limites de velocidade 
 MIN_VEL = 0     # velocidade para fazer curva 
-MAX_VEL = 2.3
+MAX_VEL = 3
 
 # ṔID angular setup 
-KP_ANGULAR = 0
+KP_ANGULAR = 1.2
 KI_ANGULAR = 0
 KD_ANGULAR = 0
 
@@ -107,9 +107,9 @@ angular_vel = PIDController(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR)
 motion_direction = 1    #  1  --> orientação frontal 
                         # -1  --> orientação traseira
 
-def turn_on_controller_callback(msg): 
-    global active_pid
-    active_pid = msg.data
+# def turn_on_controller_callback(msg): 
+#     global active_pid
+#     active_pid = msg.data
 
 def odom_callback(odom_msg): 
     global odom_pose, odom_quaternion
@@ -144,34 +144,34 @@ def backward_orientation():
 
     # * utilizando a odometria ------------------------------------------------------------------------------------------------------
 
-    # bkward_quaternion = Quaternion()
-    # bkward_pose.x = odom_pose.x
-    # bkward_pose.y = odom_pose.y
+    bkward_quaternion = Quaternion()
+    bkward_pose.x = odom_pose.x
+    bkward_pose.y = odom_pose.y
     
-    # q_rot = tf.transformations.quaternion_from_euler(0, 0, math.pi)
+    q_rot = tf.transformations.quaternion_from_euler(0, 0, math.pi)
 
-    # bkward_quaternion = quaternion_multiply([odom_quaternion.x, odom_quaternion.y, odom_quaternion.z, odom_quaternion.w],q_rot)
-    # bkward_pose.theta = tf.transformations.euler_from_quaternion(bkward_quaternion)[2]
+    bkward_quaternion = quaternion_multiply([odom_quaternion.x, odom_quaternion.y, odom_quaternion.z, odom_quaternion.w],q_rot)
+    bkward_pose.theta = tf.transformations.euler_from_quaternion(bkward_quaternion)[2]
 
     # * ------------------------------------------------------------------------------------------------------------------------------
 
-    tf_buffer = tf2_ros.Buffer()
-    tf_listener = tf2_ros.TransformListener(tf_buffer)
+    # tf_buffer = tf2_ros.Buffer()
+    # tf_listener = tf2_ros.TransformListener(tf_buffer)
 
-    try:
-        transform = tf_buffer.lookup_transform("odom", "backward_orientation_link", rospy.Time(0), rospy.Duration(2.0))
+    # try:
+    #     transform = tf_buffer.lookup_transform("odom", "backward_orientation_link", rospy.Time(0), rospy.Duration(2.0))
         
-        bkward_pose.x = transform.transform.translation.x
-        bkward_pose.y = transform.transform.translation.y
-        bkward_pose.theta = tf.transformations.euler_from_quaternion([
-            transform.transform.rotation.x,
-            transform.transform.rotation.y,
-            transform.transform.rotation.z,
-            transform.transform.rotation.w
-        ])[2]
+    #     bkward_pose.x = transform.transform.translation.x
+    #     bkward_pose.y = transform.transform.translation.y
+    #     bkward_pose.theta = tf.transformations.euler_from_quaternion([
+    #         transform.transform.rotation.x,
+    #         transform.transform.rotation.y,
+    #         transform.transform.rotation.z,
+    #         transform.transform.rotation.w
+    #     ])[2]
         
-    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-        rospy.logwarn("Failed to lookup transform from 'odom' to 'backward_orientation_link'")
+    # except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+    #     rospy.logwarn("Failed to lookup transform from 'odom' to 'backward_orientation_link'")
     
     return bkward_pose
 
@@ -182,29 +182,29 @@ def front_orientation():
 
     # * utilizando a odometria ------------------------------------------------------------------------------------------------------
 
-    # front_pose.x = odom_pose.x
-    # front_pose.y = odom_pose.y
-    # front_pose.theta = odom_pose.theta
+    front_pose.x = odom_pose.x
+    front_pose.y = odom_pose.y
+    front_pose.theta = odom_pose.theta
 
     # * ------------------------------------------------------------------------------------------------------------------------------
 
-    tf_buffer = tf2_ros.Buffer()
-    tf_listener = tf2_ros.TransformListener(tf_buffer)
+    # tf_buffer = tf2_ros.Buffer()
+    # tf_listener = tf2_ros.TransformListener(tf_buffer)
 
-    try:
-        transform = tf_buffer.lookup_transform("odom", "base_link", rospy.Time(0), rospy.Duration(1.0))
+    # try:
+    #     transform = tf_buffer.lookup_transform("odom", "base_link", rospy.Time(0), rospy.Duration(1.0))
         
-        front_pose.x = transform.transform.translation.x
-        front_pose.y = transform.transform.translation.y
-        front_pose.theta = tf.transformations.euler_from_quaternion([
-            transform.transform.rotation.x,
-            transform.transform.rotation.y,
-            transform.transform.rotation.z,
-            transform.transform.rotation.w
-        ])[2]
+    #     front_pose.x = transform.transform.translation.x
+    #     front_pose.y = transform.transform.translation.y
+    #     front_pose.theta = tf.transformations.euler_from_quaternion([
+    #         transform.transform.rotation.x,
+    #         transform.transform.rotation.y,
+    #         transform.transform.rotation.z,
+    #         transform.transform.rotation.w
+    #     ])[2]
         
-    except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-        rospy.logwarn("Failed to lookup transform from 'odom' to 'base_link'")
+    # except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+    #     rospy.logwarn("Failed to lookup transform from 'odom' to 'base_link'")
     
     return front_pose
 
@@ -230,7 +230,7 @@ def reduce_angle(angle):
 
 def position_control():
     global robot_pose, goal_pose
-    global motion_direction
+    global motion_direction, active_pid
 
     if motion_direction == 1: 
         robot_pose = front_orientation()
@@ -249,8 +249,10 @@ def position_control():
     front_pose = front_orientation()
     front_orientation_error = reduce_angle(error_angle - front_pose.theta)
 
-    print(f" front orientation error:  {front_orientation_error}")
-    print(f"backeward orientation error:  {backward_orientation_error}")
+    # print(f" front orientation error:  {front_orientation_error}")
+    # print(f"backeward orientation error:  {backward_orientation_error}")
+
+    # print(f"goal pose:  x = {goal_pose.x}   y = {goal_pose.y}")
 
     if (abs(front_orientation_error) > abs(backward_orientation_error)) and (motion_direction == 1):
         motion_direction = -1 
@@ -278,18 +280,21 @@ def position_control():
     vel_msg.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
     vel_msg.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
 
+    print(f"output velocidade:  linear = {vel_msg.linear.x}  angular = {vel_msg.angular.z}")
+
     if (active_pid): 
         cmd_vel_pub.publish(vel_msg)
+        print("pub vel")
 
 if __name__ == '__main__':
     try:
         rospy.init_node('position_controller', anonymous=True)
         rate = rospy.Rate(10)
 
-        rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
+        # rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
-        rospy.Subscriber("/goal_manager/goal/test/current", PoseStamped, setpoint_callback)
+        rospy.Subscriber("/goal_manager/goal/current", PoseStamped, setpoint_callback)
         
         while not rospy.is_shutdown():
             position_control()
