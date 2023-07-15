@@ -225,3 +225,7 @@ catkin_install_python(PROGRAMS scripts/joy_esp_interface.py
 catkin_install_python(PROGRAMS scripts/path_publisher.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+
+catkin_install_python(PROGRAMS scripts/fred_led_manager.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)

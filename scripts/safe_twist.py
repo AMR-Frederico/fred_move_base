@@ -40,6 +40,8 @@ MAX_ANGULAR_SPEED = 10
 # ------ publishers 
 safe_cmd_vel_pub = rospy.Publisher('/cmd_vel/safe', Twist, queue_size=10)
 safety_stop_pub = rospy.Publisher('/safety/emergency/stop', Bool, queue_size=10)
+safety_distance_pub = rospy.Publisher('/safety/abort/distance', Bool, queue_size=10)
+
 
 
 def cmdVel_callback(vel_msg):
