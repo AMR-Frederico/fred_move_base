@@ -91,7 +91,7 @@ if __name__ == '__main__':
     sub_change_mode = rospy.Publisher("/machine_state/control_mode/switch",Bool,queue_size = 1)
     sub_goal_reset = rospy.Publisher("/goal_manager/goal/reset",Bool, queue_size=1)
 
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(100)
     while not rospy.is_shutdown():
         #only send comands if manual mode on 
         

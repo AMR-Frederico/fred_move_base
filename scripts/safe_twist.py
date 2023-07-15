@@ -19,6 +19,8 @@ cmd_vel = Twist()
 # PUBS ---------------------------------
 safe_cmd_vel_pub = rospy.Publisher('/cmd_vel/safe', Twist, queue_size=10)
 safety_stop_pub = rospy.Publisher('/safety/emergency/stop', Bool, queue_size=10)
+safety_distance_pub = rospy.Publisher('/safety/abort/distance', Bool, queue_size=10)
+
 
 distanceSensor = []
 safeValue = 200
@@ -185,6 +187,7 @@ if __name__ == '__main__':
 
         safety_stop_pub.publish(safety_stop_msg)
         safe_cmd_vel_pub.publish(safe_cmd_vel_msg)
+        safety_distance_pub.publish(danger_distance)
         rate.sleep()
 
 # print(start)

@@ -71,13 +71,13 @@ class PIDController:
 # -------------------------------------------------- fim da classe
 
 # ----- constantes PID angular
-KP_angular = 2
+KP_angular = 5
 KI_angular = 0
 KD_angular = 0
 
 # limites de vel linear
-max_linear = 2
-min_linear = 0
+max_linear = 2.5
+min_linear = 1
 
 # ----- setpoints / goal (x, y, theta)
 goal_pose = Pose2D()
@@ -104,7 +104,7 @@ angular = PIDController(KP_angular, KI_angular, KD_angular)
 # ------ publishers 
 error_angular_pub = rospy.Publisher("/control/position/debug/angular/error", Float32, queue_size = 10)
 error_linear_pub = rospy.Publisher("control/position/debug/linear/error", Float32, queue_size = 10)
-# goal_reached_pub = rospy.Publisher("/goal_manager/goal/reached", Bool, queue_size = 10)
+# goal_reached_pub = rospy.Publisher("/goal_manager/goal/spline/reached", Bool, queue_size = 10)
 
 # ------ messages 
 error_orientation_msg = Float32()
@@ -208,9 +208,9 @@ def position_control():
         # com isso só a velocidade angular passa pelo
         vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_orientation)
         # goal_reached_msg.data = False
-    else: 
+    
         # goal_reached_msg.data = True
-        print("no objetivo")
+        # print("no objetivo")
     
     # goal_reached_pub.publish(goal_reached_msg)
 
@@ -226,15 +226,15 @@ def position_control():
 
     # debug
     # print("CONTROL POSITION NODE -------------------------------------------------")
-    print(f"SETPOINT -> x:{goal_pose.x} y:{goal_pose.y} theta:{round(goal_pose.theta,2)}")
-    print(f"CURRENT POSITION -> x:{round(current_pose.x,2)} y:{round(current_pose.y)} theta:{round(angulo_robo,3)}")
-    # print(f"DELTA -> x:{round(dx,2)}  y:{round(dy,2)} angulo do erro:{round(angulo_erro,3)} ")
-    print(f"ERRO ORIENTACAO -> {error_orientation}")
-    # print(f"THETA -> dth:{round(angulo_erro,2)}  th:{round(math.atan2(dx,dy),2)}")
-    print(f"ERROR -> linear:{round(error_linear,2)}")
-    print(f"VELOCITY OUTPUT -> linear:{round(vel_msg.linear.x,2)}  angular:{round(vel_msg.angular.z,2)}")
-    # # print(f"PROJECTION -> x: {round(proj_x,2)} y:{round(proj_y,2)}  ")
-    # print("\n")
+    # print(f"SETPOINT -> x:{goal_pose.x} y:{goal_pose.y} theta:{round(goal_pose.theta,2)}")
+    # print(f"CURRENT POSITION -> x:{round(current_pose.x,2)} y:{round(current_pose.y)} theta:{round(angulo_robo,3)}")
+    # # print(f"DELTA -> x:{round(dx,2)}  y:{round(dy,2)} angulo do erro:{round(angulo_erro,3)} ")
+    # print(f"ERRO ORIENTACAO -> {error_orientation}")
+    # # print(f"THETA -> dth:{round(angulo_erro,2)}  th:{round(math.atan2(dx,dy),2)}")
+    # print(f"ERROR -> linear:{round(error_linear,2)}")
+    # print(f"VELOCITY OUTPUT -> linear:{round(vel_msg.linear.x,2)}  angular:{round(vel_msg.angular.z,2)}")
+    # # # print(f"PROJECTION -> x: {round(proj_x,2)} y:{round(proj_y,2)}  ")
+    # # print("\n")
 
 # def controller_position():
 
@@ -245,7 +245,7 @@ if __name__ == '__main__':
     try:
         rospy.init_node('position_controller', anonymous=True)
         rate = rospy.Rate(100)
-        rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
+        rospy.Subscriber("/navigation/on",Bool,turn_on_controller_callback)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
         rospy.Subscriber("/goal_manager/goal/current", PoseStamped, setpoint_callback)

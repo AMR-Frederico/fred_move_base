@@ -4,13 +4,22 @@
         pkg="fred_move_base" 
         type="safe_twist.py"
         >
-        
+       
     </node>
 
-    <node name="esp_control" 
+   <node name="esp_control" 
         pkg="fred_move_base" 
         type="joy_esp_interface.py"
         >
+        
+    </node>
+
+    <node name="led_manager" 
+        pkg="fred_move_base" 
+        type="fred_led_manager.py"
+        output="screen"
+        >
+
         
     </node>
           
