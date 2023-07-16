@@ -90,7 +90,7 @@ goal_pose = Pose2D()
 cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
 
 # ------ messages 
-vel_msg = Twist()
+cmd_vel = Twist()
 
 # limites de velocidade 
 MIN_VEL = 0     # velocidade para fazer curva 
@@ -107,9 +107,9 @@ angular_vel = PIDController(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR)
 motion_direction = 1    #  1  --> orientação frontal 
                         # -1  --> orientação traseira
 
-# def turn_on_controller_callback(msg): 
-#     global active_pid
-#     active_pid = msg.data
+def turn_on_pid_callback(msg): 
+    global active_pid
+    active_pid = msg.data
 
 def odom_callback(odom_msg): 
     global odom_pose, odom_quaternion
@@ -258,14 +258,14 @@ def position_control():
         motion_direction = -1 
         robot_pose = backward_orientation()
 
-        rospy.loginfo("Position Control: Switching to backward orientation")
+        rospy.loginfo("POSITION CONTROL: Switching to backward orientation")
 
 
     elif (abs(backward_orientation_error) > abs(front_orientation_error)) and (motion_direction == -1): 
         motion_direction = 1 
         robot_pose = front_orientation()
         
-        rospy.loginfo("Position Control: Switching to front orientation")
+        rospy.loginfo("POSITION CONTROL: Switching to front orientation")
 
     dx = goal_pose.x - robot_pose.x 
     dy = goal_pose.y - robot_pose.y 
@@ -277,24 +277,26 @@ def position_control():
     # # mapea a velocidade linear em função do erro de orientação, 
     # # se o erro for máximo -> vel_linear mínima
     # # sem o erro for mínimo -> vel_linear máxima
-    vel_msg.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
-    vel_msg.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
 
-    print(f"output velocidade:  linear = {vel_msg.linear.x}  angular = {vel_msg.angular.z}")
+    cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
+    cmd_vel.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
+
+    if (math.hypot(dx, dy) == 0): 
+        cmd_vel.linear.x = 0
 
     if (active_pid): 
-        cmd_vel_pub.publish(vel_msg)
-        print("pub vel")
+        cmd_vel_pub.publish(cmd_vel)
 
 if __name__ == '__main__':
     try:
         rospy.init_node('position_controller', anonymous=True)
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(100)
 
         # rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
         rospy.Subscriber("/goal_manager/goal/current", PoseStamped, setpoint_callback)
+        rospy.Subscriber("/navigation/on",Bool, turn_on_pid_callback)
         
         while not rospy.is_shutdown():
             position_control()
