@@ -19,18 +19,11 @@ back_detection = 500
 
 ultrasonic_measurements = []
 
-in_safe_zone = False
-
-in_danger_zone = False
-danger_zone_left = False
-danger_zone_right = False
-danger_zone_back = False
-
 robot_blockage = Bool()
 blockage_frag = False
 blockage_previous_frag = False
 
-MIN_DIST_CLEARANCE = 80      # distance in centimeters 
+MIN_DIST_CLEARANCE = 10      # distance in centimeters 
 
 MOTOR_BRAKE_FACTOR = -4
 
@@ -81,15 +74,20 @@ def backUltrasonic_callback(sensor_msg):
 
     back_detection = sensor_msg.range
 
-def safe_twist():
+def main():
     global abort_command
     global ultrasonic_measurements, left_detection, right_detection, back_detection
-    global danger_zone_left, danger_zone_back, danger_zone_right, in_danger_zone
     global robot_blockage, blockage_frag, blockage_previous_frag
     global cmd_vel, robot_vel
-    global in_safe_zone
 
     smallest_measurement = 500
+
+    danger_zone_back = False
+    danger_zone_left = False
+    danger_zone_right = False
+
+    in_danger_zone = False 
+    in_safe_zone = False   
 
     robot_safety = not abort_command
 
@@ -117,17 +115,22 @@ def safe_twist():
 
     in_safe_zone = not in_danger_zone
 
+    print(f"esquerda: {left_detection} | direita: {right_detection} | back: {back_detection}")
+
     if robot_safety:
         
         if in_danger_zone:
             cmd_vel.linear.x = robot_vel.linear.x * MOTOR_BRAKE_FACTOR
             cmd_vel.angular.z = robot_vel.angular.z * MOTOR_BRAKE_FACTOR
-            rospy.loginfo(f"SAFE TWIST: Robot in the danger zone -> status: {in_danger_zone}")
+            rospy.loginfo(f"SAFE TWIST: Robot in the danger zone, obstacle ahead!")
 
         if in_safe_zone:
+            braking_factor = 1
+
             cmd_vel.linear.x = robot_vel.linear.x * braking_factor
             cmd_vel.angular.x = robot_vel.angular.z * braking_factor
-            rospy.loginfo(f"SAFE TWIST: Robot in the safe zone -> status: {in_safe_zone}")
+            rospy.loginfo(f"SAFE TWIST: Robot in the safety zone")
+            print(f"break motor vel {cmd_vel.linear.x}")
 
 
     if abort_command:
@@ -157,19 +160,20 @@ def safe_twist():
     else:
         robot_blockage.data = True
     
-    rospy.loginfo(f"SAFE TWIST: Robot safety blockage  -> status: {robot_blockage}")
+    rospy.loginfo(f"SAFE TWIST: Robot safety blockage  -> status: {robot_blockage.data}")
     blockage_previous_frag = blockage_frag
 
     safe_cmd_vel_pub.publish(cmd_vel)
     safety_stop_pub.publish(robot_blockage)
 
-
+    cmd_vel.linear.x = 0
+    cmd_vel.angular.z = 0
 
 
 if __name__ == '__main__':
 
     rospy.init_node('cmd_vel_safe')
-    rate = rospy.Rate(1)
+    rate = rospy.Rate(100)
 
     # velocities 
     rospy.Subscriber('/cmd_vel', Twist, cmdVel_callback)
@@ -185,5 +189,5 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         
-        safe_twist()
+        main()
         rate.sleep()

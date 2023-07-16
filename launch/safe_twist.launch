@@ -3,6 +3,7 @@
     <node name="safe_twist" 
         pkg="fred_move_base" 
         type="safe_twist.py"
+        output="screen"
         >
        
     </node>
@@ -10,6 +11,7 @@
    <node name="esp_control" 
         pkg="fred_move_base" 
         type="joy_esp_interface.py"
+        output="screen"
         >
         
     </node>
