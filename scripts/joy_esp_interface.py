@@ -26,7 +26,7 @@ controler_buttons = {"square": None,
                       "x": None,
                      "R2": None,
                      "L2": None,
-                     "R_Y":0,
+                     "L_Y":0,
                      "R_X":0}
 
 
@@ -57,16 +57,16 @@ def call_manual(msg):
 def call_linear(msg):
     global controler_buttons
     if(abs(msg.data) > DRIFT_ANALOG_TOLERANCE):
-         controler_buttons["R_X"] = msg.data
+         controler_buttons["L_Y"] = msg.data
     else:
-         controler_buttons["R_X"] = 0
+         controler_buttons["L_Y"] = 0
 
 def call_angular(msg):
     global controler_buttons
     if(abs(msg.data) > DRIFT_ANALOG_TOLERANCE):
-        controler_buttons["R_Y"] = msg.data
+        controler_buttons["R_X"] = msg.data
     else:
-        controler_buttons["R_Y"] = 0
+        controler_buttons["R_X"] = 0
 
 def call_break(msg):
     global controler_buttons
@@ -95,8 +95,8 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         #only send comands if manual mode on 
         
-        vel_angular = controler_buttons["R_Y"]*(MAX_SPEED_ROBOT_ANGULAR/MAX_VALUE_CONTROLER) #regra de tres equivalendo a velocidade maxima do controle com a do robo 
-        vel_linear = controler_buttons["R_X"]*(MAX_SPEED_ROBOT_LINEAR/MAX_VALUE_CONTROLER)
+        vel_angular = controler_buttons["R_X"]*(MAX_SPEED_ROBOT_ANGULAR/MAX_VALUE_CONTROLER) #regra de tres equivalendo a velocidade maxima do controle com a do robo 
+        vel_linear = controler_buttons["L_Y"]*(MAX_SPEED_ROBOT_LINEAR/MAX_VALUE_CONTROLER)
 
         ## saturação controle 
         
