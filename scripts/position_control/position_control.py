@@ -290,7 +290,7 @@ def position_control():
 if __name__ == '__main__':
     try:
         rospy.init_node('position_controller', anonymous=True)
-        rate = rospy.Rate(100)
+        rate = rospy.Rate(50)
 
         # rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
 

@@ -23,7 +23,7 @@ robot_blockage = Bool()
 blockage_frag = False
 blockage_previous_frag = False
 
-MIN_DIST_CLEARANCE = 10      # distance in centimeters 
+MIN_DIST_CLEARANCE = 80      # distance in centimeters 
 
 MOTOR_BRAKE_FACTOR = -4
 
@@ -130,8 +130,6 @@ def main():
             cmd_vel.linear.x = robot_vel.linear.x * braking_factor
             cmd_vel.angular.x = robot_vel.angular.z * braking_factor
             rospy.loginfo(f"SAFE TWIST: Robot in the safety zone")
-            print(f"break motor vel {cmd_vel.linear.x}")
-
 
     if abort_command:
         cmd_vel.linear.x = robot_vel.linear.x * MOTOR_BRAKE_FACTOR
@@ -173,7 +171,7 @@ def main():
 if __name__ == '__main__':
 
     rospy.init_node('cmd_vel_safe')
-    rate = rospy.Rate(100)
+    rate = rospy.Rate(50)
 
     # velocities 
     rospy.Subscriber('/cmd_vel', Twist, cmdVel_callback)

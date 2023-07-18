@@ -69,7 +69,7 @@ reset_odom_sub = rospy.Subscriber("/odom/reset",Bool,reset_callback)
 current_time = rospy.Time.now()
 last_time = rospy.Time.now()
 
-r = rospy.Rate(10)
+r = rospy.Rate(50)
 
 while not rospy.is_shutdown():
     current_time = rospy.Time.now()
