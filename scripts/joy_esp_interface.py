@@ -96,7 +96,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         #only send comands if manual mode on 
         vel_angular = 0
-        vel linear = 0
+        vel_linear = 0
 
         vel_angular = controler_buttons["R_X"]*(MAX_SPEED_ROBOT_ANGULAR/MAX_VALUE_CONTROLER) #regra de tres equivalendo a velocidade maxima do controle com a do robo 
         vel_linear = controler_buttons["L_Y"]*(MAX_SPEED_ROBOT_LINEAR/MAX_VALUE_CONTROLER)
