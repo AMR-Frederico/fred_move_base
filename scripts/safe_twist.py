@@ -27,7 +27,7 @@ MIN_DIST_CLEARANCE = 80      # distance in centimeters
 
 MOTOR_BRAKE_FACTOR = -4
 
-MAX_LINEAR_SPEED = 2
+MAX_LINEAR_SPEED = 10
 MAX_ANGULAR_SPEED = 10
 
 # ------ publishers 
@@ -82,10 +82,6 @@ def main():
 
     smallest_measurement = 500
 
-    danger_zone_back = False
-    danger_zone_left = False
-    danger_zone_right = False
-
     in_danger_zone = False 
     in_safe_zone = False   
 
@@ -115,7 +111,7 @@ def main():
 
     in_safe_zone = not in_danger_zone
 
-    print(f"esquerda: {left_detection} | direita: {right_detection} | back: {back_detection}")
+    rospy.loginfo(f"SAFE TWIST: esquerda: {left_detection} | direita: {right_detection} | back: {back_detection}")
 
     if robot_safety:
         
@@ -127,8 +123,8 @@ def main():
         if in_safe_zone:
             braking_factor = 1
 
-            cmd_vel.linear.x = robot_vel.linear.x * braking_factor
-            cmd_vel.angular.x = robot_vel.angular.z * braking_factor
+            cmd_vel.linear.x = cmd_vel.linear.x * braking_factor
+            cmd_vel.angular.z = cmd_vel.angular.z * braking_factor
             rospy.loginfo(f"SAFE TWIST: Robot in the safety zone")
 
     if abort_command:
@@ -162,6 +158,7 @@ def main():
     blockage_previous_frag = blockage_frag
 
     safe_cmd_vel_pub.publish(cmd_vel)
+
     safety_stop_pub.publish(robot_blockage)
 
     cmd_vel.linear.x = 0
@@ -171,7 +168,7 @@ def main():
 if __name__ == '__main__':
 
     rospy.init_node('cmd_vel_safe')
-    rate = rospy.Rate(50)
+    rate = rospy.Rate(1)
 
     # velocities 
     rospy.Subscriber('/cmd_vel', Twist, cmdVel_callback)
