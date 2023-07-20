@@ -179,7 +179,7 @@ def main():
 if __name__ == '__main__':
 
     rospy.init_node('cmd_vel_safe')
-    rate = rospy.Rate(1)
+    rate = rospy.Rate(50)
 
     # velocities 
     rospy.Subscriber('/cmd_vel', Twist, cmdVel_callback)
