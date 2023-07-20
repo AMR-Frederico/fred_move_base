@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 led_color = Fred_color.green 
 
             if abort_distance:
-                led_color = Fred_color.distance
+                led_color = Fred_color.orange
 
             if abort_manual:
                 led_color = Fred_color.red
@@ -93,7 +93,7 @@ if __name__ == '__main__':
                 led_color = Fred_color.green 
 
             if abort_distance:
-                led_color = Fred_color.distance
+                led_color = Fred_color.orange
 
             if abort_manual:
                 led_color = Fred_color.red
