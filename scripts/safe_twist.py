@@ -41,6 +41,8 @@ def cmdVel_callback(vel_msg):
     global cmd_vel 
 
     cmd_vel = vel_msg
+    
+    main()
 
 def odom_callback(odom_msg): 
     global robot_vel
@@ -128,8 +130,12 @@ def main():
             rospy.loginfo(f"SAFE TWIST: Robot in the safety zone")
 
     if abort_command:
-        cmd_vel.linear.x = robot_vel.linear.x * MOTOR_BRAKE_FACTOR
-        cmd_vel.angular.z = robot_vel.angular.z * MOTOR_BRAKE_FACTOR
+        
+        cmd_vel.linear.x = 0
+        cmd_vel.angular.z = 0
+
+        # cmd_vel.linear.x = robot_vel.linear.x * MOTOR_BRAKE_FACTOR
+        # cmd_vel.angular.z = robot_vel.angular.z * MOTOR_BRAKE_FACTOR
         rospy.loginfo(f"SAFE TWIST: --------------------- MANUAL SAFETY STOP ---------------------------------")
 
 
@@ -154,6 +160,10 @@ def main():
     else:
         robot_blockage.data = True
     
+
+    print(f"vel linear: {cmd_vel.linear.x}")
+
+
     rospy.loginfo(f"SAFE TWIST: Robot safety blockage  -> status: {robot_blockage.data}")
     blockage_previous_frag = blockage_frag
 
@@ -168,7 +178,7 @@ def main():
 if __name__ == '__main__':
 
     rospy.init_node('cmd_vel_safe')
-    rate = rospy.Rate(1)
+    rate = rospy.Rate(50)
 
     # velocities 
     rospy.Subscriber('/cmd_vel', Twist, cmdVel_callback)
@@ -184,5 +194,4 @@ if __name__ == '__main__':
 
     while not rospy.is_shutdown():
         
-        main()
         rate.sleep()
