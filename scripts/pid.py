@@ -1,6 +1,9 @@
+#!/user/bin/env python3
+
+
 from time import time
 
-class PositionController: 
+class PIDController: 
     def __init__(self, KP, KI, KD):
         self.KP = KP
         self.KD = KD 

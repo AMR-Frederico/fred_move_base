@@ -26,7 +26,7 @@ controler_buttons = {"square": None,
                       "x": None,
                      "R2": None,
                      "L2": None,
-                     "R_Y":0,
+                     "L_Y":0,
                      "R_X":0}
 
 
@@ -57,16 +57,16 @@ def call_manual(msg):
 def call_linear(msg):
     global controler_buttons
     if(abs(msg.data) > DRIFT_ANALOG_TOLERANCE):
-         controler_buttons["R_X"] = msg.data
+         controler_buttons["L_Y"] = msg.data
     else:
-         controler_buttons["R_X"] = 0
+         controler_buttons["L_Y"] = 0
 
 def call_angular(msg):
     global controler_buttons
     if(abs(msg.data) > DRIFT_ANALOG_TOLERANCE):
-        controler_buttons["R_Y"] = msg.data
+        controler_buttons["R_X"] = msg.data
     else:
-        controler_buttons["R_Y"] = 0
+        controler_buttons["R_X"] = 0
 
 def call_break(msg):
     global controler_buttons
@@ -91,15 +91,17 @@ if __name__ == '__main__':
     sub_change_mode = rospy.Publisher("/machine_state/control_mode/switch",Bool,queue_size = 1)
     sub_goal_reset = rospy.Publisher("/goal_manager/goal/reset",Bool, queue_size=1)
 
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(50)
+
     while not rospy.is_shutdown():
         #only send comands if manual mode on 
-        
-        vel_angular = controler_buttons["R_Y"]*(MAX_SPEED_ROBOT_ANGULAR/MAX_VALUE_CONTROLER) #regra de tres equivalendo a velocidade maxima do controle com a do robo 
-        vel_linear = controler_buttons["R_X"]*(MAX_SPEED_ROBOT_LINEAR/MAX_VALUE_CONTROLER)
+        vel_angular = 0
+        vel_linear = 0
+
+        vel_angular = controler_buttons["R_X"]*(MAX_SPEED_ROBOT_ANGULAR/MAX_VALUE_CONTROLER) #regra de tres equivalendo a velocidade maxima do controle com a do robo 
+        vel_linear = controler_buttons["L_Y"]*(MAX_SPEED_ROBOT_LINEAR/MAX_VALUE_CONTROLER)
 
         ## saturação controle 
-        
 
         cmd_vel_msg.linear.x = vel_linear
         cmd_vel_msg.angular.z = vel_angular
@@ -115,11 +117,9 @@ if __name__ == '__main__':
         #names is wrong wont fix now sorry
         sub_goal_reset.publish(odom_reset)
 
-
         #triangle
         mode_change = rising_edge(last_switch_mode,switch_mode)
         last_switch_mode = switch_mode
         sub_change_mode.publish(mode_change)
-
 
         rate.sleep()

@@ -1,263 +1,242 @@
+#!/usr/bin/env python3
 
 
-import rospy
-import math
+from pid import PIDController
+
+import math 
+import rospy 
+import tf2_ros
 import tf
 
-from std_msgs.msg import Bool, Float32
+from tf.transformations import quaternion_multiply
+from geometry_msgs.msg import Pose2D, PoseStamped,Quaternion, Twist
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist, Pose2D, PoseStamped, Quaternion
+from std_msgs.msg import Bool 
 
-from time import time
-
-class PIDController: 
-    def __init__(self, KP, KI, KD):
-        self.KP = KP
-        self.KD = KD 
-        self.KI = KI
-
-        self.time = time()
-        self.last_time = time()
-        self.delta_time = 0
-
-        self.error = 0
-        self.last_error = 0
-        self.delta_error = 0
-
-        self.integral = 0
-    
-    def proporcional(self):
-
-        return self.KP * self.error
-    
-    def integrative(self): 
-
-        self.integral += self.error * self.delta_time
-            #anti wind-up
-        if(self.integral > 1.5 or self.integral < -1.5):
-            self.integral = 0
-        # print(self.integral)
-        return self.integral * self.KI
-
-    def derivative(self):
-        self.delta_error = self.error - self.last_error
-
-        if(self.delta_error != 0):
-            self.delta_error = self.delta_error/self.delta_time
-        else:
-            self.delta_error = 0
-        return self.delta_error*self.KD
-            
-    def output(self, kp, ki, kd, error):
-        self.KP = kp
-        self.KI = ki
-        self.KD = kd
-
-        self.error = error
-
-        self.time = time()
-        self.delta_time = self.time - self.last_time
-
-        if (self.error != 0):
-            output = self.proporcional() + self.integrative() + self.derivative()
-        else: 
-            output = self.proporcional() + self.derivative()
-        
-        self.last_error = self.error
-        self.last_time = self.time
-
-        return output
-
-# -------------------------------------------------- fim da classe
-
-# ----- constantes PID angular
-KP_angular = 8#6.3 #0.5
-KI_angular = 1.5#1
-KD_angular = 1#0
-
-# ----- constants pid controller -> linear 
-KP_linear = 0.5 #0.25
-KI_linear = 0.1#0.01
-KD_linear = 0 #0
-
-# limites de vel linear
-max_linear = 3
-min_linear = 1.3
-
-# ----- setpoints / goal (x, y, theta)
-goal_pose = Pose2D()
-goal_pose.x = 0
-goal_pose.y = 0
-goal_pose.theta = 0
-goal_quaternion = Quaternion()
-
-# ----- current robot pose/orientation (x, y, theta)
-current_pose = Pose2D()
-current_quaternion = Quaternion()
-
-# ----- tolerance
-Tolerance_linear = 0.5         # in meters 
-Tolerance_angular = math.pi/2        # in rad 
-Distance_to_goal = 0           # in meters, for the exit point
-
+# flag da maquina de estados
 active_pid = True
 
-# ------ pid config 
-angular = PIDController(KP_angular, KI_angular, KD_angular)   
-linear = PIDController(KP_linear, KI_linear, KD_linear)
+# pose atual do robo em relação a odometria
+robot_pose = Pose2D()
+odom_pose = Pose2D()
+odom_quaternion = Quaternion()
+
+# setpoint/goal 
+goal_pose = Pose2D()
 
 # ------ publishers 
-error_angular_pub = rospy.Publisher("/control/position/debug/angular/error", Float32, queue_size = 10)
-error_linear_pub = rospy.Publisher("control/position/debug/linear/error", Float32, queue_size = 10)
-# goal_reached_pub = rospy.Publisher("/goal_manager/goal/reached", Bool, queue_size = 10)
+cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
 
 # ------ messages 
-error_orientation_msg = Float32()
-error_linear_msg = Float32()
-goal_reached_msg = Bool()
-vel_msg = Twist()
+cmd_vel = Twist()
 
-# ------ subcribers 
-cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+# limites de velocidade 
+MIN_VEL = 0     # velocidade para fazer curva 
+MAX_VEL = 3
 
+# ṔID angular setup 
+KP_ANGULAR = 1.2
+KI_ANGULAR = 0
+KD_ANGULAR = 0
 
-# reduzir ângulo entre -pi e pi
-def reduce_angle(angle):
-    # angle = angle % 2*math.pi
-    if angle > math.pi:
-        angle = angle - 2*math.pi
-    if angle < -math.pi:
-        angle = angle + 2*math.pi
-    return angle
+angular_vel = PIDController(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR)
 
-# ativa o controle de posição
-def turn_on_controller_callback(msg):
+# variavel de controle de direção e sentido 
+motion_direction = 1    #  1  --> orientação frontal 
+                        # -1  --> orientação traseira
+
+def turn_on_pid_callback(msg): 
     global active_pid
     active_pid = msg.data
 
-# troca das constantes do pid angular de forma dinamica
-def kp_angular_callback(msg):
-    global KP_angular 
-    KP_angular = msg.data
-
-# troca das constantes do pid angular de forma dinamica
-def kd_angular_callback(msg):
-    global KI_angular 
-    KI_angular = msg.data 
-
-# troca das constantes do pid angular de forma dinamica
-def ki_angular_callback(msg):
-    global KD_angular 
-    KD_angular = msg.data
-
-# atualiza o objetivo
-def setpoint_callback(msg): 
-    global goal_pose
-    goal_pose.x = msg.pose.position.x
-    goal_pose.y = msg.pose.position.y 
-
-    goal_quaternion = msg.pose.orientation 
-    goal_pose.theta = tf.transformations.euler_from_quaternion([goal_quaternion.x, goal_quaternion.y, goal_quaternion.z, goal_quaternion.w])[2]
-
-# posição atual do robo
 def odom_callback(odom_msg): 
-    global current_pose
-    global current_quaternion 
+    global odom_pose, odom_quaternion
 
-    # posição atual do robo de acordo com a odometria
-    current_pose.x = odom_msg.pose.pose.position.x
-    current_pose.y = odom_msg.pose.pose.position.y 
-    current_quaternion = odom_msg.pose.pose.orientation
+    odom_pose.x = odom_msg.pose.pose.position.x
+    odom_pose.y = odom_msg.pose.pose.position.y
+    odom_quaternion = odom_msg.pose.pose.orientation
     
-    # transforma quaternion em ângulo de euler, e retira só o valor de yaw. 
-    current_pose.theta = tf.transformations.euler_from_quaternion([current_quaternion.x, current_quaternion.y, current_quaternion.z, current_quaternion.w])[2]
+    odom_pose.theta = tf.transformations.euler_from_quaternion([
+        odom_quaternion.x, 
+        odom_quaternion.y, 
+        odom_quaternion.z, 
+        odom_quaternion.w
+        ])[2]
 
-def position_control(): 
-
+def setpoint_callback(goal_msg): 
     global goal_pose
-    global current_pose
 
-    # distancia até o objetivo, em relação ao eixo x e ao eixo y
-    dx = goal_pose.x - current_pose.x
-    dy = goal_pose.y - current_pose.y
-
-    # calculo do modulo do erro linear
-    error_linear = math.hypot(dx, dy)
+    goal_pose.x = goal_msg.pose.position.x 
+    goal_pose.y = goal_msg.pose.position.y 
+    goal_pose.theta = tf.transformations.euler_from_quaternion([
+        goal_msg.pose.orientation.x, 
+        goal_msg.pose.orientation.y, 
+        goal_msg.pose.orientation.z, 
+        goal_msg.pose.orientation.w
+        ])[2]
     
-    angulo_erro = math.atan2(dy,dx)
-    angulo_robo = current_pose.theta
+    rospy.loginfo("POSITION CONTROL: Received new goal")
 
-    # proj_x = dx * math.cos(angulo_erro) + dy * math.sin(angulo_erro)  # se proj_x > 0, vetor esta no sentido positivo de x
-    # proj_y = -dx * math.sin(angulo_erro) + dy * math.cos(angulo_erro) # se proj_y > 0, vetor esta no sentido positivo de y
+# Orientação e posição do robô com x+ apontado para trás e y+ para direita
+def backward_orientation():
+    global odom_pose, odom_quaternion
+    bkward_pose = Pose2D()
 
+    # * utilizando a odometria ------------------------------------------------------------------------------------------------------
 
-   # while the robot is out the tolerance, compute PID, otherwise, send 0
-    error_orientation = reduce_angle(angulo_erro - angulo_robo)
+    bkward_quaternion = Quaternion()
+    bkward_pose.x = odom_pose.x
+    bkward_pose.y = odom_pose.y
     
-    # if abs(error_orientation)>math.pi/3:   #força o robo a rotacionar ate que esteja alinhado ao angulo
-    #     vel_msg.linear.x = 0
-    #     if error_orientation > 0:
-    #         vel_msg.angular.z = 1
-    #     else:
-    #         vel_msg.angular.z = -1
-    
-    if (abs(error_linear) > Tolerance_linear):
+    q_rot = tf.transformations.quaternion_from_euler(0, 0, math.pi)
 
-        # mapea a velocidade linear em função do erro de orientação, 
-        # se o erro for máximo -> vel_linear mínima
-        # sem o erro for mínimo -> vel_linear máxima
-        # vel_msg.linear.x = (1-abs(error_orientation)/math.pi)*(max_linear - min_linear) + min_linear
+    bkward_quaternion = quaternion_multiply([odom_quaternion.x, odom_quaternion.y, odom_quaternion.z, odom_quaternion.w],q_rot)
+    bkward_pose.theta = tf.transformations.euler_from_quaternion(bkward_quaternion)[2]
+
+    # * ------------------------------------------------------------------------------------------------------------------------------
+
+    # tf_buffer = tf2_ros.Buffer()
+    # tf_listener = tf2_ros.TransformListener(tf_buffer)
+
+    # try:
+    #     transform = tf_buffer.lookup_transform("odom", "backward_orientation_link", rospy.Time(0), rospy.Duration(2.0))
         
-        vel_msg.linear.x = linear.output(KP_linear, KI_linear, KD_linear, error_linear) 
-
-        # com isso só a velocidade angular passa pelo
-        vel_msg.angular.z = angular.output(KP_angular, KI_angular, KD_angular, error_orientation)
-        # goal_reached_msg.data = False
-    else: 
-        # goal_reached_msg.data = True
-        print("no objetivo")
+    #     bkward_pose.x = transform.transform.translation.x
+    #     bkward_pose.y = transform.transform.translation.y
+    #     bkward_pose.theta = tf.transformations.euler_from_quaternion([
+    #         transform.transform.rotation.x,
+    #         transform.transform.rotation.y,
+    #         transform.transform.rotation.z,
+    #         transform.transform.rotation.w
+    #     ])[2]
+        
+    # except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+    #     rospy.logwarn("Failed to lookup transform from 'odom' to 'backward_orientation_link'")
     
-    # goal_reached_pub.publish(goal_reached_msg)
+    return bkward_pose
 
-    # publish message if pid is active
+# Orientação e posição do robô com x+ apontado para frente e y+ para esquerda
+def front_orientation():
+    global odom_pose
+    front_pose = Pose2D()
+
+    # * utilizando a odometria ------------------------------------------------------------------------------------------------------
+
+    front_pose.x = odom_pose.x
+    front_pose.y = odom_pose.y
+    front_pose.theta = odom_pose.theta
+
+    # * ------------------------------------------------------------------------------------------------------------------------------
+
+    # tf_buffer = tf2_ros.Buffer()
+    # tf_listener = tf2_ros.TransformListener(tf_buffer)
+
+    # try:
+    #     transform = tf_buffer.lookup_transform("odom", "base_link", rospy.Time(0), rospy.Duration(1.0))
+        
+    #     front_pose.x = transform.transform.translation.x
+    #     front_pose.y = transform.transform.translation.y
+    #     front_pose.theta = tf.transformations.euler_from_quaternion([
+    #         transform.transform.rotation.x,
+    #         transform.transform.rotation.y,
+    #         transform.transform.rotation.z,
+    #         transform.transform.rotation.w
+    #     ])[2]
+        
+    # except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+    #     rospy.logwarn("Failed to lookup transform from 'odom' to 'base_link'")
+    
+    return front_pose
+
+# reduz ângulo entre -2pi e 2pi
+# def reduce_angle(angle):
+#     if angle > 2*math.pi:
+#         angle = angle - 4*math.pi
+    
+#     if angle < -2*math.pi:
+#         angle = angle + 4*math.pi
+    
+#     return angle
+
+# reduz ângulo entre -pi e pi
+def reduce_angle(angle):
+    while angle > math.pi:
+        angle -= 2*math.pi
+    
+    while angle <= -math.pi:
+        angle += 2*math.pi
+    
+    return angle
+
+def position_control():
+    global robot_pose, goal_pose
+    global motion_direction, active_pid
+
+    if motion_direction == 1: 
+        robot_pose = front_orientation()
+    
+    elif motion_direction == -1:
+        robot_pose = backward_orientation()
+    
+    dx = goal_pose.x - robot_pose.x 
+    dy = goal_pose.y - robot_pose.y 
+
+    error_angle = math.atan2(dy,dx)
+
+    bkward_pose = backward_orientation()
+    backward_orientation_error = reduce_angle(error_angle - bkward_pose.theta)
+
+    front_pose = front_orientation()
+    front_orientation_error = reduce_angle(error_angle - front_pose.theta)
+
+    # print(f" front orientation error:  {front_orientation_error}")
+    # print(f"backeward orientation error:  {backward_orientation_error}")
+
+    # print(f"goal pose:  x = {goal_pose.x}   y = {goal_pose.y}")
+
+    if (abs(front_orientation_error) > abs(backward_orientation_error)) and (motion_direction == 1):
+        motion_direction = -1 
+        robot_pose = backward_orientation()
+
+        rospy.loginfo("POSITION CONTROL: Switching to backward orientation")
+
+
+    elif (abs(backward_orientation_error) > abs(front_orientation_error)) and (motion_direction == -1): 
+        motion_direction = 1 
+        robot_pose = front_orientation()
+        
+        rospy.loginfo("POSITION CONTROL: Switching to front orientation")
+
+    dx = goal_pose.x - robot_pose.x 
+    dy = goal_pose.y - robot_pose.y 
+
+    error_angle = math.atan2(dy,dx)
+
+    orientation_error = reduce_angle(error_angle - robot_pose.theta)
+
+    # # mapea a velocidade linear em função do erro de orientação, 
+    # # se o erro for máximo -> vel_linear mínima
+    # # sem o erro for mínimo -> vel_linear máxima
+
+    cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
+    cmd_vel.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
+
+    if (math.hypot(dx, dy) == 0): 
+        cmd_vel.linear.x = 0
+
     if (active_pid): 
-        cmd_vel_pub.publish(vel_msg)
-
-    # publish the error
-    error_orientation_msg.data = error_orientation
-    error_linear_msg.data = error_linear
-    error_angular_pub.publish(error_orientation_msg)
-    error_linear_pub.publish(error_linear_msg)
-
-    # debug
-    # print("CONTROL POSITION NODE -------------------------------------------------")
-    # print(f"SETPOINT -> x:{goal_pose.x} y:{goal_pose.y} theta:{round(goal_pose.theta,2)}")
-    # print(f"CURRENT POSITION -> x:{round(current_pose.x,2)} y:{round(current_pose.y)} theta:{round(angulo_robo,3)}")
-    # print(f"DELTA -> x:{round(dx,2)}  y:{round(dy,2)} angulo do erro:{round(angulo_erro,3)} ")
-    # print(f"ERRO ORIENTACAO -> {error_orientation}")
-    # print(f"THETA -> dth:{round(angulo_erro,2)}  th:{round(math.atan2(dx,dy),2)}")
-    # print(f"ERROR -> linear:{round(error_linear,2)}")
-    # print(f"VELOCITY OUTPUT -> linear:{round(vel_msg.linear.x,2)}  angular:{round(vel_msg.angular.z,2)}")
-    # # print(f"PROJECTION -> x: {round(proj_x,2)} y:{round(proj_y,2)}  ")
-    # print("\n")
-
-# def controller_position():
-
-
-
+        cmd_vel_pub.publish(cmd_vel)
 
 if __name__ == '__main__':
     try:
         rospy.init_node('position_controller', anonymous=True)
-        rate = rospy.Rate(100)
-        rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
+        rate = rospy.Rate(50)
+
+        # rospy.Subscriber("/control/on",Bool,turn_on_controller_callback)
 
         rospy.Subscriber("/odom", Odometry, odom_callback)
         rospy.Subscriber("/goal_manager/goal/current", PoseStamped, setpoint_callback)
-
-        rospy.Subscriber("/control/position/setup/angular/kp", Float32, kp_angular_callback)
-        rospy.Subscriber("/control/position/setup/angular/ki", Float32, kd_angular_callback)
-        rospy.Subscriber("/control/position/setup/angular/kd", Float32, ki_angular_callback)
+        rospy.Subscriber("/navigation/on",Bool, turn_on_pid_callback)
         
         while not rospy.is_shutdown():
             position_control()
