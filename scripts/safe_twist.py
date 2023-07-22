@@ -115,7 +115,7 @@ def main():
 
     in_safe_zone = not in_danger_zone
 
-    print(f"esquerda: {left_detection} | direita: {right_detection} | back: {back_detection}")
+    # print(f"esquerda: {left_detection} | direita: {right_detection} | back: {back_detection}")
 
     if robot_safety:
         

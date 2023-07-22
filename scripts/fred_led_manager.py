@@ -98,7 +98,7 @@ if __name__ == '__main__':
             if abort_manual:
                 led_color = Fred_color.red
 
-        print(f"|{led_color}|  ABORT: DISTANCE {abort_distance}, MANUAL {abort_manual}, STATE {main_state}, GOAL_REACHED {led_goal_reached}")
+        # print(f"|{led_color}|  ABORT: DISTANCE {abort_distance}, MANUAL {abort_manual}, STATE {main_state}, GOAL_REACHED {led_goal_reached}")
 
         pub_fita_led.publish(led_color)
         rate.sleep()
