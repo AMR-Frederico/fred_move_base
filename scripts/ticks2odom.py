@@ -10,7 +10,7 @@ from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
 # Parameters
-wheeltrack = 0.300  # distance between whells
+wheeltrack = 0.3800  # distance between whells
 wheelradius = 0.075  # radius of the wheel in meters
 TPR = 2400*3  # ticks per turn
 left_ticks = 0
@@ -103,7 +103,7 @@ while not rospy.is_shutdown():
 
     if(reset_odom):
         # x = 0
-        x = 0.24
+        x = 0.245
         y = 0
         #th = 0
         heading_offset = heading
@@ -154,3 +154,5 @@ while not rospy.is_shutdown():
     last_time = current_time
     print(f'X:{x} | Y:{y} | Theta:{th}')
     r.sleep()
+
+

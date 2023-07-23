@@ -76,7 +76,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool 
 
 # flag da maquina de estados
-active_pid = True
+active_pid = False
 
 # pose atual do robo em relação a odometria
 robot_pose = Pose2D()
@@ -94,10 +94,10 @@ cmd_vel = Twist()
 
 # limites de velocidade 
 MIN_VEL = 0     # velocidade para fazer curva 
-MAX_VEL = 3
+MAX_VEL = 1
 
 # ṔID angular setup 
-KP_ANGULAR = 1.2
+KP_ANGULAR = 0.5
 KI_ANGULAR = 0
 KD_ANGULAR = 0
 
@@ -284,7 +284,9 @@ def position_control():
     if (math.hypot(dx, dy) == 0): 
         cmd_vel.linear.x = 0
 
-    if (active_pid): 
+    if (active_pid):
+
+        print("POSTION CONTROL: Publicando vel") 
         cmd_vel_pub.publish(cmd_vel)
 
 if __name__ == '__main__':

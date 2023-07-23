@@ -40,7 +40,7 @@ def odometry_callback(msg):
 
     path.poses.append(p)
     path.header.stamp = rospy.Time.now()
-    path.header.frame_id = "map"
+    path.header.frame_id = "odom"
     path_pub.publish(path)
     
 
