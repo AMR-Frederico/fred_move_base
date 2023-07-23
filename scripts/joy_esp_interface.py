@@ -31,7 +31,7 @@ controler_buttons = {"square": None,
 
 
 MAX_SPEED_ROBOT_LINEAR = 5
-MAX_SPEED_ROBOT_ANGULAR = 20
+MAX_SPEED_ROBOT_ANGULAR = 10
 MAX_VALUE_CONTROLER = 127
 
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
         ## saturação controle 
 
         cmd_vel_msg.linear.x = vel_linear
-        cmd_vel_msg.angular.z = vel_angular
+        cmd_vel_msg.angular.z = -1*vel_angular
 
         if(manual_mode):
             cmd_vel_pub.publish(cmd_vel_msg)

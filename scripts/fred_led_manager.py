@@ -42,7 +42,7 @@ def call_abort_manual(msg):
 def call_main_state(msg):
     global main_state
     main_state = msg.data 
-    print(main_state)
+    main()
 
 def call_goal_reached_callback(msg):
     global start_timer
@@ -61,18 +61,8 @@ def call_goal_reached_callback(msg):
     if rospy.Time.now() - start_timer > LED_ON_TIME:
         led_goal_reached = False
 
-if __name__ == '__main__':
-    rospy.init_node('led_manager')
-    rate = rospy.Rate(50)
-    pub_fita_led = rospy.Publisher("/cmd/led_strip/color", Float32, queue_size=5)
-
-    rospy.Subscriber('/safety/abort/distance', Bool, call_abort_distance)
-    rospy.Subscriber('/joy/controler/ps4/break', Int16, call_abort_manual)
-    rospy.Subscriber('/machine_state/main', Int16, call_main_state)
-    rospy.Subscriber("/goal_manager/goal/cone/reached", Bool, call_goal_reached_callback)
-
-    while not rospy.is_shutdown():
-        led_color = Fred_color.red
+def main():
+        led_color = Fred_color.pink
 
         if main_state == 50:
             led_color = Fred_color.blue
@@ -83,9 +73,7 @@ if __name__ == '__main__':
             if abort_distance:
                 led_color = Fred_color.orange
 
-            if abort_manual:
-                led_color = Fred_color.red
-
+           
         if main_state == 0:
             led_color = Fred_color.white
 
@@ -95,10 +83,24 @@ if __name__ == '__main__':
             if abort_distance:
                 led_color = Fred_color.orange
 
-            if abort_manual:
-                led_color = Fred_color.red
+           
+
+        if(main_state == 2):
+             led_color = Fred_color.red
+
 
         print(f"|{led_color}|  ABORT: DISTANCE {abort_distance}, MANUAL {abort_manual}, STATE {main_state}, GOAL_REACHED {led_goal_reached}")
 
         pub_fita_led.publish(led_color)
-        rate.sleep()
+
+if __name__ == '__main__':
+    rospy.init_node('led_manager')
+    # rate = rospy.Rate(50)
+    pub_fita_led = rospy.Publisher("/cmd/led_strip/color", Float32, queue_size=5)
+
+    rospy.Subscriber('/safety/abort/distance', Bool, call_abort_distance)
+    rospy.Subscriber('/joy/controler/ps4/break', Int16, call_abort_manual)
+    rospy.Subscriber('/machine_state/main', Int16, call_main_state)
+    rospy.Subscriber("/goal_manager/goal/cone/reached", Bool, call_goal_reached_callback)
+
+    rospy.spin()
