@@ -8,9 +8,11 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32,Bool
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
+from tf.transformations import quaternion_multiply
+
 
 # Parameters
-wheeltrack = 0.3800  # distance between whells
+wheeltrack = 0.300  # distance between whells
 wheelradius = 0.075  # radius of the wheel in meters
 TPR = 2400*3  # ticks per turn
 left_ticks = 0
@@ -20,7 +22,7 @@ last_right_ticks = 0
 heading = 0
 reset_odom = False
 
-imu_quaternion = []
+imu_quaternion = Quaternion()
 
 # x = 0
 x = 0.24 #consider robot front  not base_link
@@ -51,8 +53,16 @@ def headingCB(msg):
     global heading
     global imu_quaternion
 
+    imu_rotation = Quaternion()
+
     imu_quaternion = msg.orientation
-    heading = tf.transformations.euler_from_quaternion([imu_quaternion.x, imu_quaternion.y, imu_quaternion.z, imu_quaternion.w])[2]
+
+    q_rot = tf.transformations.quaternion_from_euler(0, 0, -math.pi/2)
+
+    imu_rotation = quaternion_multiply([imu_quaternion.x, imu_quaternion.y, imu_quaternion.z, imu_quaternion.w],q_rot)
+    
+    print(imu_rotation)
+    heading = tf.transformations.euler_from_quaternion([imu_rotation[0], imu_rotation[1], imu_rotation[2], imu_rotation[3]])[2]
 
 
 rospy.init_node('odometry_publisher')
@@ -103,7 +113,7 @@ while not rospy.is_shutdown():
 
     if(reset_odom):
         # x = 0
-        x = 0.245
+        x = 0.24
         y = 0
         #th = 0
         heading_offset = heading
@@ -154,5 +164,3 @@ while not rospy.is_shutdown():
     last_time = current_time
     print(f'X:{x} | Y:{y} | Theta:{th}')
     r.sleep()
-
-

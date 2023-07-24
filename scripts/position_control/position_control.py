@@ -85,6 +85,7 @@ odom_quaternion = Quaternion()
 
 # setpoint/goal 
 goal_pose = Pose2D()
+goal_pose.x = 0.245
 
 # ------ publishers 
 cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
@@ -270,6 +271,9 @@ def position_control():
     dx = goal_pose.x - robot_pose.x 
     dy = goal_pose.y - robot_pose.y 
 
+    # print(f"GOAL X = {goal_pose.x}")
+    # print(f"GOAL Y = {goal_pose.y}\n")
+
     error_angle = math.atan2(dy,dx)
 
     orientation_error = reduce_angle(error_angle - robot_pose.theta)
@@ -277,6 +281,10 @@ def position_control():
     # # mapea a velocidade linear em função do erro de orientação, 
     # # se o erro for máximo -> vel_linear mínima
     # # sem o erro for mínimo -> vel_linear máxima
+
+    # print(f"DX = {dx}")
+    # print(f"DY = {dy}\n")
+
 
     cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
     cmd_vel.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
@@ -286,7 +294,8 @@ def position_control():
 
     if (active_pid):
 
-        print("POSTION CONTROL: Publicando vel") 
+        # print(f"VEL LINEAR = {cmd_vel.linear.x}") 
+        # print(f"VEL ANGULAR = {cmd_vel.angular.z}")
         cmd_vel_pub.publish(cmd_vel)
 
 if __name__ == '__main__':
