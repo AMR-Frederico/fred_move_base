@@ -14,7 +14,7 @@ from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool 
 
 # flag da maquina de estados
-active_pid = True
+active_pid = False
 
 # pose atual do robo em relação a odometria
 robot_pose = Pose2D()
@@ -23,6 +23,7 @@ odom_quaternion = Quaternion()
 
 # setpoint/goal 
 goal_pose = Pose2D()
+goal_pose.x = 0.245
 
 # ------ publishers 
 cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
@@ -32,10 +33,10 @@ cmd_vel = Twist()
 
 # limites de velocidade 
 MIN_VEL = 0     # velocidade para fazer curva 
-MAX_VEL = 3
+MAX_VEL = 1
 
 # ṔID angular setup 
-KP_ANGULAR = 1.2
+KP_ANGULAR = 0.5
 KI_ANGULAR = 0
 KD_ANGULAR = 0
 
@@ -210,6 +211,9 @@ def position_control():
     dx = goal_pose.x - robot_pose.x 
     dy = goal_pose.y - robot_pose.y 
 
+    # print(f"GOAL X = {goal_pose.x}")
+    # print(f"GOAL Y = {goal_pose.y}\n")
+
     error_angle = math.atan2(dy,dx)
 
     orientation_error = reduce_angle(error_angle - robot_pose.theta)
@@ -218,13 +222,20 @@ def position_control():
     # # se o erro for máximo -> vel_linear mínima
     # # sem o erro for mínimo -> vel_linear máxima
 
+    # print(f"DX = {dx}")
+    # print(f"DY = {dy}\n")
+
+
     cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
     cmd_vel.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
 
     if (math.hypot(dx, dy) == 0): 
         cmd_vel.linear.x = 0
 
-    if (active_pid): 
+    if (active_pid):
+
+        # print(f"VEL LINEAR = {cmd_vel.linear.x}") 
+        # print(f"VEL ANGULAR = {cmd_vel.angular.z}")
         cmd_vel_pub.publish(cmd_vel)
 
 if __name__ == '__main__':
