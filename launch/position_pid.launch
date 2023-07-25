@@ -7,13 +7,5 @@
         >
         
     </node>
-
-    <node name="odometry_to_path_node" 
-        pkg="fred_move_base" 
-        type="path_publisher.py"
-        output="screen"
-        >
-        
-    </node>
           
 </launch>
