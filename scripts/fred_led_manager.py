@@ -6,7 +6,7 @@ from enum import Enum, IntEnum
 
 class Fred_color(IntEnum):
     white = 0
-    blue = 1 
+    blue = 1
     yellow = 5
     pink = 4 
     green = 3 
@@ -21,7 +21,7 @@ goal_reached = False
 last_goal_reached = False
 last_abort_status = False
 
-LED_ON_TIME = rospy.Duration(2)
+LED_ON_TIME = rospy.Duration(1)
 start_timer = rospy.Time(0)
 led_goal_reached = False 
 
@@ -55,12 +55,17 @@ def call_goal_reached_callback(msg):
     goal_reached = msg.data 
 
     if goal_reached > last_goal_reached: 
+        rospy.loginfo("LED MANAGER: start ")
         start_timer = rospy.Time.now()
         led_goal_reached = True
 
     last_goal_reached = goal_reached 
 
+    print(rospy.Time.now() - start_timer)
+
     if rospy.Time.now() - start_timer > LED_ON_TIME:
+
+        rospy.loginfo("LED MANAGER: OFF")
         led_goal_reached = False
 
 def main():
@@ -91,7 +96,7 @@ def main():
              led_color = Fred_color.red
 
 
-        print(f"|{led_color}|  ABORT: DISTANCE {abort_distance}, MANUAL {abort_manual}, STATE {main_state}, GOAL_REACHED {led_goal_reached}")
+        # print(f"|{led_color}|  ABORT: DISTANCE {abort_distance}, MANUAL {abort_manual}, STATE {main_state}, GOAL_REACHED {led_goal_reached}")
 
         pub_fita_led.publish(led_color)
 
@@ -103,6 +108,6 @@ if __name__ == '__main__':
     rospy.Subscriber('/safety/abort/distance', Bool, call_abort_distance)
     rospy.Subscriber('/joy/controler/ps4/break', Int16, call_abort_manual)
     rospy.Subscriber('/machine_state/main', Int16, call_main_state)
-    rospy.Subscriber("/goal_manager/goal/cone/reached", Bool, call_goal_reached_callback)
+    rospy.Subscriber("/goal_manager/cone/reached", Bool, call_goal_reached_callback)
 
     rospy.spin()
