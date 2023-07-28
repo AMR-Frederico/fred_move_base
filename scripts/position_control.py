@@ -23,7 +23,7 @@ odom_quaternion = Quaternion()
 
 # setpoint/goal 
 goal_pose = Pose2D()
-goal_pose.x = 0.245
+goal_pose.x = 0.25
 
 # ------ publishers 
 cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
@@ -33,10 +33,10 @@ cmd_vel = Twist()
 
 # limites de velocidade 
 MIN_VEL = 0     # velocidade para fazer curva 
-MAX_VEL = 1
+MAX_VEL = 2
 
 # ṔID angular setup 
-KP_ANGULAR = 0.5
+KP_ANGULAR = 1
 KI_ANGULAR = 0
 KD_ANGULAR = 0
 
@@ -211,8 +211,8 @@ def position_control():
     dx = goal_pose.x - robot_pose.x 
     dy = goal_pose.y - robot_pose.y 
 
-    # print(f"GOAL X = {goal_pose.x}")
-    # print(f"GOAL Y = {goal_pose.y}\n")
+    print(f"GOAL X = {goal_pose.x}")
+    print(f"GOAL Y = {goal_pose.y}\n")
 
     error_angle = math.atan2(dy,dx)
 
@@ -222,8 +222,8 @@ def position_control():
     # # se o erro for máximo -> vel_linear mínima
     # # sem o erro for mínimo -> vel_linear máxima
 
-    # print(f"DX = {dx}")
-    # print(f"DY = {dy}\n")
+    print(f"DX = {dx}")
+    print(f"DY = {dy}\n")
 
 
     cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction

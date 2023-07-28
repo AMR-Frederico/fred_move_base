@@ -6,7 +6,8 @@ from enum import Enum, IntEnum
 
 class Fred_color(IntEnum):
     white = 0
-    blue = 1
+    blue = 100
+     
     yellow = 5
     pink = 4 
     green = 3 

@@ -122,21 +122,21 @@ if __name__ == '__main__':
 
         in_safe_zone = not in_danger_zone
 
-        rospy.loginfo(f"SAFE TWIST: Ultrassom -> esquerda: {left_detection} | direita: {right_detection} | back: {back_detection}")
+        # rospy.loginfo(f"SAFE TWIST: Ultrassom -> esquerda: {left_detection} | direita: {right_detection} | back: {back_detection}")
 
         if robot_safety:
         
             if in_danger_zone:
                 cmd_vel.linear.x = robot_vel.linear.x * MOTOR_BRAKE_FACTOR
                 cmd_vel.angular.z = robot_vel.angular.z * MOTOR_BRAKE_FACTOR
-                rospy.loginfo(f"SAFE TWIST: Robot in the danger zone, obstacle ahead!")
+                # rospy.loginfo(f"SAFE TWIST: Robot in the danger zone, obstacle ahead!")
 
             if in_safe_zone:
                 braking_factor = 1
 
                 cmd_vel.linear.x = cmd_vel.linear.x * braking_factor
                 cmd_vel.angular.z = cmd_vel.angular.z * braking_factor
-                rospy.loginfo(f"SAFE TWIST: Robot in the safety zone")
+                # rospy.loginfo(f"SAFE TWIST: Robot in the safety zone")
 
         if abort_command:
 
@@ -147,7 +147,7 @@ if __name__ == '__main__':
             # cmd_vel.linear.x = robot_vel.linear.x * MOTOR_BRAKE_FACTOR
             # cmd_vel.angular.z = robot_vel.angular.z * MOTOR_BRAKE_FACTOR
 
-            rospy.loginfo(f"SAFE TWIST: --------------------- MANUAL SAFETY STOP ---------------------------------")
+            # rospy.loginfo(f"SAFE TWIST: --------------------- MANUAL SAFETY STOP ---------------------------------")
 
         if (cmd_vel.linear.x > MAX_LINEAR_SPEED):
             cmd_vel.linear.x = MAX_LINEAR_SPEED
