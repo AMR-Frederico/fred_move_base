@@ -29,10 +29,10 @@ safety_distance_pub = rospy.Publisher('/safety/abort/distance', Bool, queue_size
 
 MIN_DIST_CLEARANCE = 80      # distance in centimeters 
 
-MOTOR_BRAKE_FACTOR = -4
+MOTOR_BRAKE_FACTOR = -1
 
-MAX_LINEAR_SPEED = 3
-MAX_ANGULAR_SPEED = 10
+MAX_LINEAR_SPEED = 5
+MAX_ANGULAR_SPEED = 20
 
 def abort_callback(abort_msg): 
     global abort_command, abort_flag, abort_previous_flag
