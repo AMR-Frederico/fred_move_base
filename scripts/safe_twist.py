@@ -20,6 +20,10 @@ left_detection = 500    # max reading
 right_detection = 500
 back_detection = 500
 
+ROBOT_STOPED_SPEED = 0.3
+K_VEL = 1.5
+k_vel = K_VEL
+
 ultrasonic_measurements = []
 
 # ------ publishers 
@@ -68,14 +72,29 @@ def odom_callback(odom_msg):
     robot_vel.angular.z = odom_msg.twist.twist.angular.z
 
 def cmdVel_callback(vel_msg):
-    global cmd_vel 
+    global cmd_vel, k_vel 
 
     cmd_vel = vel_msg
+    
+    #add rampa 
+
+    robot_not_moving = abs(robot_vel.linear.x) < ROBOT_STOPED_SPEED 
+    
+    # if robot not moving add ramp else dont 
+    # if( robot_not_moving ):
+    #    cmd_vel.linear.x =    robot_vel.linear.x +  k_vel
+
 
     if abort_command or in_danger_zone: 
         cmd_vel.linear.x = 0
         cmd_vel.angular.z = 0 
 
+    # if cmd_vel.linear.x == 0:
+    #     k_vel = 0 
+    # else:
+    #     k_vel = K_VEL
+
+    print(f"SAFE_TWIST: robot mov :{robot_not_moving}, vel:  {robot_vel.linear.x} : {cmd_vel.linear.x}")
 
 if __name__ == '__main__':
     rospy.init_node('cmd_vel_safe')
