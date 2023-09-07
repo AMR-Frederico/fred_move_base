@@ -59,6 +59,7 @@ def call_goal_reached_callback(msg):
         rospy.loginfo("LED MANAGER: start ")
         start_timer = rospy.Time.now()
         led_goal_reached = True
+        pub_reached_received(True)
 
     last_goal_reached = goal_reached 
 
@@ -105,6 +106,7 @@ if __name__ == '__main__':
     rospy.init_node('led_manager')
     # rate = rospy.Rate(50)
     pub_fita_led = rospy.Publisher("/cmd/led_strip/color", Float32, queue_size=5)
+    pub_reached_received = rospy.Publisher("/goal_manager/goal/cone/reached/ack", Bool, queue_size=5)
 
     rospy.Subscriber('/safety/abort/distance', Bool, call_abort_distance)
     rospy.Subscriber('/joy/controler/ps4/break', Int16, call_abort_manual)
