@@ -7,11 +7,10 @@ import tf
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32,Bool
 from sensor_msgs.msg import Imu
-
 from geometry_msgs.msg import Point, Pose, Quaternion, Twist, Vector3
 
 # Parameters
-wheeltrack = 0.380  # distance between whells
+wheeltrack = 0.3800  # distance between whells
 wheelradius = 0.075  # radius of the wheel in meters
 TPR = 2400*3  # ticks per turn
 left_ticks = 0
@@ -21,7 +20,10 @@ last_right_ticks = 0
 heading = 0
 reset_odom = False
 
-x = 0.24 #consider robot front  not base_link
+imu_quaternion = []
+
+# x = 0
+x = 0.0 #consider robot front  not base_link
 y = 0.0
 th = 0.0
 
@@ -47,6 +49,7 @@ def rightTicksCallback(msg):
 
 def headingCB(msg):
     global heading
+    global imu_quaternion
 
     imu_quaternion = msg.orientation
     heading = tf.transformations.euler_from_quaternion([imu_quaternion.x, imu_quaternion.y, imu_quaternion.z, imu_quaternion.w])[2]
@@ -60,14 +63,13 @@ left_ticks_sub = rospy.Subscriber(
 right_ticks_sub = rospy.Subscriber(
     "power/status/distance/ticks/right", Float32, rightTicksCallback)
 heading_sub = rospy.Subscriber("sensor/orientation/imu", Imu, headingCB)
-odom_broadcaster = tf.TransformBroadcaster()
 
 reset_odom_sub = rospy.Subscriber("/odom/reset",Bool,reset_callback)
 
 current_time = rospy.Time.now()
 last_time = rospy.Time.now()
 
-r = rospy.Rate(100)
+r = rospy.Rate(50)
 
 while not rospy.is_shutdown():
     current_time = rospy.Time.now()
@@ -96,26 +98,38 @@ while not rospy.is_shutdown():
 
     x += dx
     y += dy
-    #th = (th+dth) % (2*pi)
+    # th = (th+dth) % (2*pi)
     th = heading - heading_offset
-    
+
     if(reset_odom):
         # x = 0
-        x = 0.24
+        x = 0
         y = 0
         #th = 0
         heading_offset = heading
-        
 
     odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
 
-    # first, we'll publish the transform over tf
+    # compute the odometry relative to the footprint frame
+    odom_quat = tf.transformations.quaternion_from_euler(0, 0, th)
+    odom_broadcaster = tf.TransformBroadcaster()
     odom_broadcaster.sendTransform(
         (x, y, 0.),
         odom_quat,
         current_time,
-        "base_link",
+        "base_footprint",
         "odom"
+    )
+
+    # crate a frame between base_link e base_footprint
+    base_link_quat = tf.transformations.quaternion_from_euler(0, 0, 0)  # no rotation
+    base_link_broadcaster = tf.TransformBroadcaster()
+    base_link_broadcaster.sendTransform(
+        (0, 0, 0.08),  # offset between base_footprint and base_link in meters
+        base_link_quat,
+        current_time,
+        "base_link",
+        "base_footprint"
     )
 
     # next, we'll publish the odometry message over ROS
@@ -130,7 +144,7 @@ while not rospy.is_shutdown():
         vy = dy/dt
         vth = dth/dt
 
-    odom.child_frame_id = "base_link"
+    odom.child_frame_id = "base_footprint"
     odom.twist.twist = Twist(Vector3(vx, vy, 0), Vector3(0, 0, vth))
 
     odom_pub.publish(odom)
@@ -140,3 +154,4 @@ while not rospy.is_shutdown():
     last_time = current_time
     print(f'X:{x} | Y:{y} | Theta:{th}')
     r.sleep()
+
