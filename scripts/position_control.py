@@ -32,12 +32,12 @@ cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
 cmd_vel = Twist()
 
 # limites de velocidade 
-MIN_VEL = 0     # velocidade para fazer curva 
-MAX_VEL = 2
+MIN_VEL = 0.3     # velocidade para fazer curva 
+MAX_VEL = 1.5
 
 # ṔID angular setup 
-KP_ANGULAR = 1
-KI_ANGULAR = 0
+KP_ANGULAR = 20
+KI_ANGULAR = 1
 KD_ANGULAR = 0
 
 angular_vel = PIDController(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR)
@@ -76,7 +76,7 @@ def setpoint_callback(goal_msg):
         goal_msg.pose.orientation.w
         ])[2]
     
-    rospy.loginfo("POSITION CONTROL: Received new goal")
+    # rospy.loginfo("POSITION CONTROL: Received new goal")
 
 # Orientação e posição do robô com x+ apontado para trás e y+ para direita
 def backward_orientation():
@@ -211,8 +211,7 @@ def position_control():
     dx = goal_pose.x - robot_pose.x 
     dy = goal_pose.y - robot_pose.y 
 
-    print(f"GOAL X = {goal_pose.x}")
-    print(f"GOAL Y = {goal_pose.y}\n")
+    rospy.loginfo(f"POSITION: goal x = {goal_pose.x}  |  goal y = {goal_pose.y}")
 
     error_angle = math.atan2(dy,dx)
 
@@ -222,15 +221,18 @@ def position_control():
     # # se o erro for máximo -> vel_linear mínima
     # # sem o erro for mínimo -> vel_linear máxima
 
-    print(f"DX = {dx}")
-    print(f"DY = {dy}\n")
+    rospy.loginfo(f"POSITION CONTROL: error dx = {dx}  |  error dy{dy}\n")
 
+    rospy.loginfo(f"POSITION CONTROL: output velocidade linear = {cmd_vel.linear.x}  |  angular = {cmd_vel.angular.z}")
 
     cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
     cmd_vel.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
 
-    if (math.hypot(dx, dy) == 0): 
-        cmd_vel.linear.x = 0
+    # if (math.hypot(dx, dy) < 0.1): 
+    #     cmd_vel.linear.x = 0
+    #     cmd_vel.angular.z = 0    
+    #     cmd_vel_pub.publish(cmd_vel)
+    #     active_pid = False    
 
     if (active_pid):
 
