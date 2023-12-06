@@ -11,7 +11,7 @@ import tf
 from tf.transformations import quaternion_multiply
 from geometry_msgs.msg import Pose2D, PoseStamped,Quaternion, Twist
 from nav_msgs.msg import Odometry
-from std_msgs.msg import Bool 
+from std_msgs.msg import Bool, Float32
 
 # flag da maquina de estados
 active_pid = False
@@ -26,10 +26,16 @@ goal_pose = Pose2D()
 goal_pose.x = 0.25
 
 # ------ publishers 
-cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
+# cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
+controller_error_pub = rospy.Publisher('/controller/error', Float32, queue_size=10)
+controller_setpoint = rospy.Publisher('/controller/setpoint', Float32, queue_size=10)
+motion_direction_pub = rospy.Publisher ('/controller/direction', Float32, queue_size=10)
 
 # ------ messages 
 cmd_vel = Twist()
+error_msg = Float32()
+setpoint_msg = Float32()
+direction_msg = Float32()
 
 # limites de velocidade 
 MIN_VEL = 0.3     # velocidade para fazer curva 
@@ -217,16 +223,21 @@ def position_control():
 
     orientation_error = reduce_angle(error_angle - robot_pose.theta)
 
+    error_msg.data = orientation_error
+    setpoint_msg.data = error_angle
+
+    direction_msg.data = motion_direction
+
     # # mapea a velocidade linear em função do erro de orientação, 
     # # se o erro for máximo -> vel_linear mínima
     # # sem o erro for mínimo -> vel_linear máxima
 
     rospy.loginfo(f"POSITION CONTROL: error dx = {dx}  |  error dy{dy}\n")
 
-    rospy.loginfo(f"POSITION CONTROL: output velocidade linear = {cmd_vel.linear.x}  |  angular = {cmd_vel.angular.z}")
+    # rospy.loginfo(f"POSITION CONTROL: output velocidade linear = {cmd_vel.linear.x}  |  angular = {cmd_vel.angular.z}")
 
-    cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
-    cmd_vel.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
+    # cmd_vel.linear.x = ((1-abs(orientation_error)/math.pi)*(MAX_VEL - MIN_VEL) + MIN_VEL) * motion_direction
+    # cmd_vel.angular.z = angular_vel.output(KP_ANGULAR, KI_ANGULAR, KD_ANGULAR, orientation_error)
 
     # if (math.hypot(dx, dy) < 0.1): 
     #     cmd_vel.linear.x = 0
@@ -234,11 +245,14 @@ def position_control():
     #     cmd_vel_pub.publish(cmd_vel)
     #     active_pid = False    
 
-    if (active_pid):
+    controller_error_pub.publish(error_msg)
+    controller_setpoint.publish(setpoint_msg)
+    motion_direction_pub.publish(direction_msg)
+    # if (active_pid):
 
         # print(f"VEL LINEAR = {cmd_vel.linear.x}") 
         # print(f"VEL ANGULAR = {cmd_vel.angular.z}")
-        cmd_vel_pub.publish(cmd_vel)
+        # cmd_vel_pub.publish(cmd_vel)
 
 if __name__ == '__main__':
     try:
