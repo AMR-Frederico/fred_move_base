@@ -35,7 +35,7 @@ MIN_DIST_CLEARANCE = 80      # distance in centimeters
 
 MOTOR_BRAKE_FACTOR = -1
 
-MAX_LINEAR_SPEED = 5
+MAX_LINEAR_SPEED = 2
 MAX_ANGULAR_SPEED = 20
 
 def abort_callback(abort_msg): 

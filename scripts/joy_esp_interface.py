@@ -48,7 +48,7 @@ def call_change_mode(msg):
 def call_reset_odom(msg):
     global reset_odom  
     reset_odom = msg.data
-
+   
 
 def call_manual(msg):
     global manual_mode
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     sub_odom_reset = rospy.Publisher("odom/reset",Bool, queue_size = 1 )
     sub_change_mode = rospy.Publisher("/machine_state/control_mode/switch",Bool,queue_size = 1)
     sub_goal_reset = rospy.Publisher("/goal_manager/goal/reset",Bool, queue_size=1)
-
+    sub_goal_completed = rospy.Publisher("/goal_manager/goal/mission_completed",Bool, queue_size=1)
     rate = rospy.Rate(50)
 
     while not rospy.is_shutdown():
@@ -113,6 +113,9 @@ if __name__ == '__main__':
         #circle
         odom_reset = rising_edge(last_reset_odom,reset_odom)
         last_reset_odom = reset_odom
+        if(odom_reset):
+             sub_goal_completed.publish(False)
+
         sub_odom_reset.publish(odom_reset)
         #names is wrong wont fix now sorry
         sub_goal_reset.publish(odom_reset)

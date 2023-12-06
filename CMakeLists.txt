@@ -229,3 +229,7 @@ include_directories(
 # catkin_install_python(PROGRAMS scripts/fred_led_manager.py
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
+
+# catkin_install_python(PROGRAMS scripts/led_manager_ale.py
+#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+# )

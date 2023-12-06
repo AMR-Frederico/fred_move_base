@@ -32,8 +32,8 @@ cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size = 10)
 cmd_vel = Twist()
 
 # limites de velocidade 
-MIN_VEL = 0.3     # velocidade para fazer curva 
-MAX_VEL = 1.5
+MIN_VEL = 0.5     # velocidade para fazer curva 
+MAX_VEL = 2
 
 # ṔID angular setup 
 KP_ANGULAR = 20

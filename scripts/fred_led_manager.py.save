@@ -39,6 +39,8 @@ led_goal_reached = False
 
 goal_pose = Pose2D()
 
+
+
 def setpoint_callback(msg): 
     global goal_pose
     goal_pose.x = msg.pose.position.x
@@ -46,9 +48,11 @@ def setpoint_callback(msg):
     goal_pose.theta = msg.pose.orientation.z
     # print(goal_pose)
 
+
 def call_abort_distance(msg):
     global abort_distance 
     abort_distance = msg.data 
+
 
 def call_abort_manual(msg):
     global abort_manual
@@ -62,9 +66,11 @@ def call_abort_manual(msg):
 
     last_abort_status = abort_status
 
+
 def call_main_state(msg):
     global main_state
     main_state = msg.data 
+
 
 def call_goal_reached_callback(msg):
     global start_timer
@@ -78,10 +84,6 @@ def call_goal_reached_callback(msg):
         # rospy.loginfo("LED MANAGER: start ")
         start_timer = rospy.Time.now()
         led_goal_reached = True
-        pub_goal_reached_captured.publish(True)
-        
-        if goal_pose.theta == 1:
-            led_goal_reached = False
 
     last_goal_reached = goal_reached 
 
@@ -92,11 +94,9 @@ def call_goal_reached_callback(msg):
         # rospy.loginfo("LED MANAGER: OFF")
         led_goal_reached = False
 
-    #if goal_pose.theta == 1 :
-        #led_goal_reached = False 
+    if goal_pose.theta == 1 :
+        led_goal_reached = False 
 
-    # pub acknowledge -> next goal current
-    #pub_goal_reached_captured.publish(True)
 
 def main():
         global goal_pose
@@ -139,7 +139,6 @@ if __name__ == '__main__':
     rospy.init_node('led_manager')
     rate = rospy.Rate(50)
     pub_fita_led = rospy.Publisher("/cmd/led_strip/color", Float32, queue_size=5)
-    pub_goal_reached_captured = rospy.Publisher("/goal_manager/goal/reached/ack", Bool, queue_size=5)
 
     rospy.Subscriber("/goal_manager/goal/current", PoseStamped, setpoint_callback)
 
