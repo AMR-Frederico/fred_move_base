@@ -73,8 +73,8 @@ def odom_callback(odom_msg):
 def setpoint_callback(goal_msg): 
     global goal_pose
 
-    goal_pose.x = goal_msg.pose.position.x 
-    goal_pose.y = goal_msg.pose.position.y 
+    goal_pose.x = 3 #goal_msg.pose.position.x 
+    goal_pose.y = 0 #goal_msg.pose.position.y 
     goal_pose.theta = tf.transformations.euler_from_quaternion([
         goal_msg.pose.orientation.x, 
         goal_msg.pose.orientation.y, 
@@ -245,10 +245,11 @@ def position_control():
     #     cmd_vel_pub.publish(cmd_vel)
     #     active_pid = False    
 
+    # if (active_pid):
+    
     controller_error_pub.publish(error_msg)
     controller_setpoint.publish(setpoint_msg)
     motion_direction_pub.publish(direction_msg)
-    # if (active_pid):
 
         # print(f"VEL LINEAR = {cmd_vel.linear.x}") 
         # print(f"VEL ANGULAR = {cmd_vel.angular.z}")
